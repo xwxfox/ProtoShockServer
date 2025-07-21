@@ -1,0 +1,28 @@
+import { Server, Socket } from "socket.io";
+import { serverData } from "@socket/global";
+import { RoomSummary } from "@socket/types";
+import { formatUptime, getTotalPlayerCount } from "@socket/util";
+
+export default (io: Server, socket: Socket) => {
+    socket.on("api-stats", () => {
+        const roomsList: RoomSummary[] = [];
+        serverData.rooms.forEach((room) => {
+            roomsList.push({
+                RoomID: room.id,
+                RoomName: room.name,
+                RoomPlayerCount: room.playerCount,
+                RoomPlayerMax: room.maxplayers,
+                RoomGameVersion: room.gameversion,
+            });
+        });
+
+        socket.volatile.emit("api-stats", {
+            playerCount: getTotalPlayerCount(),
+            memoryUsage: `${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)}mb`,
+            countryCode: process.env.countryCode,
+            uptime: formatUptime(Math.round(process.uptime())),
+            rooms: roomsList || "",
+            roomsCount: serverData.rooms.size || 0
+        })
+    });
+}
