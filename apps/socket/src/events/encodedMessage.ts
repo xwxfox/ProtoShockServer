@@ -1,8 +1,8 @@
 import { Server, Socket } from "socket.io";
 import { createGunzip } from "zlib";
 import { finished } from "stream/promises";
-import { handleAction } from "@socket/util";
-
+import { handleAction } from "@socket/handlers/ActionHandler";
+import { runAction } from "@socket/util";
 export default (io: Server, socket: Socket) => {
     socket.on("message", async (compressedMessage) => {
         try {
@@ -18,11 +18,22 @@ export default (io: Server, socket: Socket) => {
             const messageList = decompressedMessage.split('\n');
             const filteredMessageList = messageList.filter(msg => msg.trim() !== '');
 
-            filteredMessageList.forEach((element) => {
+            filteredMessageList.forEach(async (element) => {
                 try {
                     const data = JSON.parse(element);
-                    console.log(data)
-                    handleAction(socket, data);
+                    const result = await handleAction(socket, data);
+
+                    // Handle the main processed action
+                    if (result.processedAction) {
+                        runAction(socket, result.processedAction);
+                    }
+
+                    // Handle any additional actions that should be sent to the client
+                    if (result.additionalActions && result.additionalActions.length > 0) {
+                        for (const additionalAction of result.additionalActions) {
+                            runAction(socket, additionalAction);
+                        }
+                    }
                 } catch (err) {
                     console.error("Error parsing message:", err);
                 }

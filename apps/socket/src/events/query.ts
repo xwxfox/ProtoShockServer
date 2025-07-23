@@ -4,10 +4,11 @@ import { createGzip } from "zlib";
 import fs from "fs";
 import sharp from "sharp";
 import { serverOptions } from "@socket/constants";
+import { internal } from "@socket/util";
 
 export default (io: Server, socket: Socket) => {
     socket.on("query", () => {
-        console.log("[Server] Query received from", socket.id);
+        internal.log("[Server] Query received from", socket.id);
         const filePath = path.join(__dirname, serverOptions.serverIconFile);
         const gzip = createGzip();
         const chunks: any[] = [];

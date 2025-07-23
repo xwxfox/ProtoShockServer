@@ -5,7 +5,7 @@ import registerPingHandler from "@socket/events/ping";
 import registerDisconnectHandler from "@socket/events/disconnect";
 import registerWebClientConnectHandler from "@socket/events/webClientConnect";
 import registerQueryHandler from "@socket/events/query";
-import registerMessageHandler from "@socket/events/message";
+import registerMessageHandler from "@socket/events/encodedMessage";
 import registerApiStatsHandler from "@socket/events/api-stats";
 
 import { serverData, webclients } from "@socket/global";

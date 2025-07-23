@@ -40,7 +40,7 @@ export function startInterval() {
     messageInterval = setInterval(sendBundledCompressedMessages, 1000 / 30);
 }
 
-export function handleAction(socket: Socket, data: any) {
+export function runAction(socket: Socket, data: any) {
     switch (data.action) {
         case 'createRoom':
             serverData.createRoom(socket, data.roomName, data.scene, data.scenepath, data.gameversion, data.maxplayers);
@@ -214,7 +214,7 @@ export function formatUptime(seconds: number) {
 }
 
 function log(message: string, ...args: any[]) {
-    if (serverOptions.debugMode === 3) {
+    if (serverOptions.debugMode === 4) {
         console.log(message, ...args);
     }
 }
