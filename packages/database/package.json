@@ -1,27 +1,29 @@
 {
-    "name": "@protoshock/socket",
-    "version": "0.1.0",
+    "name": "@protoshock/database",
+    "version": "0.0.0",
     "type": "module",
-    "private": true,
     "scripts": {
-        "dev": "tsx src/index.ts",
         "build": "NODE_ENV=production tsc --build && tsc-alias",
-        "start": "NODE_ENV=production node dist/index.js",
         "lint": "eslint . --ext .ts,.tsx --max-warnings 12",
-        "check-types": "tsc --noEmit"
+        "check-types": "tsc --noEmit",
+        "migrate": "drizzle-kit generate --config drizzle.config.ts"
     },
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "private": true,
     "devDependencies": {
         "@protoshock/eslint-config": "*",
         "@protoshock/typescript-config": "*",
+        "@types/better-sqlite3": "^7.6.13",
         "@types/node": "^22.15.3",
+        "drizzle-kit": "^0.31.4",
         "eslint": "^9.31.0",
         "tsc-alias": "^1.8.16",
         "tsx": "^4.20.3",
         "typescript": "5.8.2"
     },
     "dependencies": {
-        "@socket.io/admin-ui": "^0.5.1",
-        "socket.io": "^4.8.1",
-        "uWebSockets.js": "github:uNetworking/uWebSockets.js#v20.52.0"
+        "better-sqlite3": "^12.2.0",
+        "drizzle-orm": "^0.44.3"
     }
 }

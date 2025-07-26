@@ -8,6 +8,7 @@ import { transformThrottleHandler } from "./MiddlewareHandlers/transformThrottle
 import { roomValidationHandler } from "./MiddlewareHandlers/roomValidationHandler";
 import { welcomeHandler } from "./MiddlewareHandlers/welcomeHandler";
 import { chatCommandHandler } from "./MiddlewareHandlers/basicCommandHandler";
+import { transformSmoothingHandler } from "./MiddlewareHandlers/transformSmoothing";
 
 // Register all handlers
 export function registerBuiltinHandlers() {
@@ -24,6 +25,7 @@ export function registerBuiltinHandlers() {
     actionMiddleware.registerRPCHandler('chatmessage', chatCommandHandler);
     actionMiddleware.registerRPCHandler('playerinfo', antiCheatHandler);
     actionMiddleware.registerRPCHandler('SyncTransform', transformThrottleHandler);
+    actionMiddleware.registerRPCHandler('SyncTransform', transformSmoothingHandler);
 
     console.log('Built in action handlers registered!');
 }
@@ -36,5 +38,7 @@ export {
     antiCheatHandler,
     transformThrottleHandler,
     roomValidationHandler,
+    transformSmoothingHandler,
+    chatCommandHandler,
     welcomeHandler
 };

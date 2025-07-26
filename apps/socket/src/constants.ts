@@ -8,4 +8,5 @@ export const serverOptions = {
     debugMode: parseInt(process.env.DEBUG_TYPE || "3", 10),
     serverIconFile: process.env.SERVER_ICON_FILE || "serverIcon.png",
     enableServerIcon: process.env.ENABLE_SERVER_ICON === "true",
+    enableSocketAdminUI: process.env.ENABLE_SOCKET_ADMIN_UI === "true" || false,
 };

@@ -1,5 +1,6 @@
 import { Server, Socket } from "socket.io";
-import { createServer } from "http";
+import { App } from "uWebSockets.js";
+import { instrument } from "@socket.io/admin-ui";
 
 import registerPingHandler from "@socket/events/ping";
 import registerDisconnectHandler from "@socket/events/disconnect";
@@ -28,12 +29,18 @@ console.log(`[Server] Listening on port ${serverOptions.port}...`);
 console.log(`[Server] Debug mode is set to ${serverOptions.debugMode}.`);
 console.log(serverOptions)
 
-const httpServer = createServer();
-const io = new Server(httpServer, {
+const uws = App();
+const io = new Server({
+    /*
+    //Will be added in the future
+    // but either requires extensive rework of how we handle bundled messages with zlib
+    // or modifying the game code.
     connectionStateRecovery: {
         maxDisconnectionDuration: 2 * 60 * 1000,
         skipMiddlewares: true,
     },
+    */
+    addTrailingSlash: true,
     allowUpgrades: true,
     cors: {
         origin: (_req, callback) => {
@@ -48,6 +55,19 @@ const io = new Server(httpServer, {
     pingTimeout: 60000,
 });
 
+if (serverOptions.enableSocketAdminUI) {
+    instrument(io, {
+        auth: {
+            type: "basic",
+            username: "admin",
+            password: "admin",
+        },
+        mode: serverOptions.debugMode === 4 ? "development" : "production",
+    });
+    console.log("[Server] Socket Admin UI is enabled.");
+}
+
+io.attachApp(uws);
 setInterval(checkRoomValidity, 10000);
 
 scheduleGc();
@@ -107,6 +127,6 @@ const onConnection = (socket: Socket) => {
 
 io.on("connection", onConnection);
 
-httpServer.listen(serverOptions.port, () => {
+uws.listen(serverOptions.port, () => {
     console.log(`[Server] HTTP Server listening on port ${serverOptions.port}`);
 });
