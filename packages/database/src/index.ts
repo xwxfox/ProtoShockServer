@@ -5,9 +5,11 @@ import { BetterSQLite3Database, drizzle } from 'drizzle-orm/better-sqlite3';
 import Database from 'better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { users } from './models/SavedUsers';
+import { playerStats, serverStats, chatMessages, serverEvents, adminActions, bannedPlayers } from './models/PlayerStats';
 import { createHash } from 'node:crypto';
 import os from 'os';
 export * from './models/SavedUsers';
+export * from './models/PlayerStats';
 const env = loadEnv();
 
 export class ProtoDBClass {

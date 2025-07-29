@@ -18,7 +18,7 @@ export const handleAction = async (
     socket: Socket,
     action: Action,
     context?: Partial<ActionContext>
-): Promise<{ processedAction: Action | null, additionalActions?: Action[] }> => {
+): Promise<{ processedAction: Action | null, additionalActions?: Action[], delay?: number }> => {
     // Create action context
     const actionContext: ActionContext = {
         timestamp: Date.now(),
@@ -46,7 +46,8 @@ export const handleAction = async (
                 console.log(`Sending additional actions for: ${action.action}`);
                 return {
                     processedAction: response.modifiedAction || action,
-                    additionalActions: response.additionalActions
+                    additionalActions: response.additionalActions,
+                    delay: response.delay || 0
                 };
 
             case ActionResult.PASS_THROUGH:

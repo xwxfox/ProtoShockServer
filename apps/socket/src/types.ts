@@ -1,5 +1,15 @@
 import { Socket } from "socket.io";
 
+export interface WebClientData {
+  rooms: RoomSummary[];
+  roomsCount: number;
+  players: any[];
+  playerCount: number;
+  uptime: string;
+  memoryUsage: number;
+  countryCode: string;
+}
+
 // Base action interface
 export interface BaseAction {
   action: string;
@@ -154,6 +164,7 @@ export interface ActionHandlerResponse {
   modifiedAction?: Action;
   additionalActions?: Action[];
   reason?: string;
+  delay?: number; // Optional delay in milliseconds before processing the action
 }
 
 // Action handler function type
@@ -179,6 +190,7 @@ export interface Player {
   local: boolean;
   hosting: boolean;
   lastMessageTime?: number;
+  name: "PLAYER" | string;
 }
 
 export interface Room {

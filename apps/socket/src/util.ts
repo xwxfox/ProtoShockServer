@@ -1,7 +1,9 @@
-import { Socket } from "socket.io";
+import { Server, Socket } from "socket.io";
 import { messageQueue, serverData } from "@socket/global";
 import { createGzip } from "zlib";
 import { serverOptions } from "@socket/constants";
+import { HttpResponse } from "uWebSockets.js";
+import { RoomSummary, WebClientData } from "./types";
 
 export let messageInterval: NodeJS.Timeout;
 
@@ -34,6 +36,33 @@ export async function sendBundledCompressedMessages() {
         }
     });
     messageQueue.MessagesToSend.clear();
+}
+/**
+ * Send a single compressed message to a specific socket
+ * @param socket Socket 
+ * @param data JSON clientMessage event
+ */
+export async function sendCompressedMessage(socket: Socket, data: any) {
+    console.log("[Debug] Sending compressed message:", data);
+    try {
+        if (socket) {
+            const gzip = createGzip();
+            const buffers: any[] = [];
+            gzip.on('data', (chunk) => buffers.push(chunk));
+            gzip.on('end', () => {
+                const compressedData = Buffer.concat(buffers);
+                console.log("[Debug] Compressed data size:", compressedData.length);
+
+                socket.emit('clientmessage', compressedData);
+            });
+            gzip.on('error', (error) => {
+                console.error("[Error] There was a issue compressing the message:", error);
+            });
+            gzip.end(JSON.stringify(data));
+        }
+    } catch (error) {
+        console.error("Error compressing and sending message:", error);
+    }
 }
 
 export function startInterval() {
@@ -220,3 +249,47 @@ function log(message: string, ...args: any[]) {
 }
 
 export const internal = { log };
+
+export const cleanChatMessage = (message: string): string => {
+    return message.replace(/^[^: ]+: /, '');
+}
+
+export function getWebClientData(): WebClientData {
+    const roomsList: RoomSummary[] = [];
+    const playersList: any[] = [];
+
+    serverData.rooms.forEach((room) => {
+        roomsList.push({
+            RoomID: room.id,
+            RoomName: room.name,
+            RoomPlayerCount: room.playerCount,
+            RoomPlayerMax: room.maxplayers,
+            RoomGameVersion: room.gameversion,
+        });
+
+        // Add players from this room
+        room.players.forEach((player) => {
+            playersList.push({
+                id: player.id,
+                socketId: player.socket.id,
+                username: player.name,
+                roomId: room.id,
+                roomName: room.name,
+                connected: player.socket.connected,
+                hosting: player.hosting,
+                local: player.local
+            });
+        });
+    });
+
+
+    return {
+        rooms: roomsList,
+        roomsCount: roomsList.length,
+        players: playersList,
+        playerCount: getTotalPlayerCount(),
+        uptime: convertSecondsToUnits(Math.round(process.uptime())),
+        memoryUsage: Number((process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)),
+        countryCode: serverOptions.countryCode
+    };
+}

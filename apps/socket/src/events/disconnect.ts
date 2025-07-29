@@ -1,14 +1,22 @@
 import { Server, Socket } from "socket.io";
-import { webclients, serverData } from "@socket/global";
-import { serverOptions } from "@socket/constants";
+import { webclients, serverData, clientStates } from "@socket/global";
+import { internal } from "@socket/util";
 
 export default (io: Server, socket: Socket) => {
     socket.on("disconnect", () => {
         if (webclients.connectedWebClients.has(socket)) {
             webclients.connectedWebClients.delete(socket);
-            if (serverOptions.debugMode === 3) return console.log("[Server] Web Client Removed");
+            internal.log("[Server] Web Client Removed", socket.id);
         } else {
-            serverData.removePlayer(socket);
+            if (serverData.players.has(socket.id)) {
+                serverData.removePlayer(socket);
+            }
+
         }
+        internal.log('[Connection] Client disconnected:', socket.id);
+        if (clientStates.has(socket.id)) {
+            clientStates.delete(socket.id);
+        }
+        socket.disconnect(true);
     });
 }

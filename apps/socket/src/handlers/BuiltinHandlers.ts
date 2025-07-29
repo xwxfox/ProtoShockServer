@@ -9,7 +9,8 @@ import { roomValidationHandler } from "./MiddlewareHandlers/roomValidationHandle
 import { welcomeHandler } from "./MiddlewareHandlers/welcomeHandler";
 import { chatCommandHandler } from "./MiddlewareHandlers/basicCommandHandler";
 import { transformSmoothingHandler } from "./MiddlewareHandlers/transformSmoothing";
-
+import { chatMonitoringHandler } from "./MiddlewareHandlers/chatMonitoringHandler";
+import { mergePlayerNameWithPlayerObjectHandler } from "./MiddlewareHandlers/mergeNameToPlayerId";
 // Register all handlers
 export function registerBuiltinHandlers() {
     // Global handlers
@@ -23,10 +24,11 @@ export function registerBuiltinHandlers() {
     // RPC handlers
     actionMiddleware.registerRPCHandler('chatmessage', chatFilterHandler);
     actionMiddleware.registerRPCHandler('chatmessage', chatCommandHandler);
+    actionMiddleware.registerRPCHandler('chatmessage', chatMonitoringHandler);
     actionMiddleware.registerRPCHandler('playerinfo', antiCheatHandler);
     actionMiddleware.registerRPCHandler('SyncTransform', transformThrottleHandler);
     actionMiddleware.registerRPCHandler('SyncTransform', transformSmoothingHandler);
-
+    actionMiddleware.registerRPCHandler("setplayername", mergePlayerNameWithPlayerObjectHandler);
     console.log('Built in action handlers registered!');
 }
 

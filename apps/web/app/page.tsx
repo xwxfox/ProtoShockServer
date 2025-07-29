@@ -1,102 +1,132 @@
-import Image, { type ImageProps } from "next/image";
-import { Button } from "@protoshock/ui/button";
-import styles from "./page.module.css";
+'use client';
 
-type Props = Omit<ImageProps, "src"> & {
-  srcLight: string;
-  srcDark: string;
-};
-
-const ThemeImage = (props: Props) => {
-  const { srcLight, srcDark, ...rest } = props;
-
-  return (
-    <>
-      <Image {...rest} src={srcLight} className="imgLight" />
-      <Image {...rest} src={srcDark} className="imgDark" />
-    </>
-  );
-};
-
+import Link from 'next/link';
+import { useState, useEffect } from 'react';
+import { io, Socket } from 'socket.io-client';
 export default function Home() {
-  return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <ThemeImage
-          className={styles.logo}
-          srcLight="turborepo-dark.svg"
-          srcDark="turborepo-light.svg"
-          alt="Turborepo logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol>
-          <li>
-            Get started by editing <code>apps/web/app/page.tsx</code>
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [isOnline, setIsOnline] = useState(false);
+  const [location, setLocation] = useState<string>("owo");
+  const [serverData, setServerData] = useState({
+    playerCount: 0,
+    roomsCount: 0,
+    rooms: [],
+    memoryUsage: '0 MB',
+    countryCode: 'UK',
+    uptime: '0:00:00'
+  });
 
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new/clone?demo-description=Learn+to+implement+a+monorepo+with+a+two+Next.js+sites+that+has+installed+three+local+packages.&demo-image=%2F%2Fimages.ctfassets.net%2Fe5382hct74si%2F4K8ZISWAzJ8X1504ca0zmC%2F0b21a1c6246add355e55816278ef54bc%2FBasic.png&demo-title=Monorepo+with+Turborepo&demo-url=https%3A%2F%2Fexamples-basic-web.vercel.sh%2F&from=templates&project-name=Monorepo+with+Turborepo&repository-name=monorepo-turborepo&repository-url=https%3A%2F%2Fgithub.com%2Fvercel%2Fturborepo%2Ftree%2Fmain%2Fexamples%2Fbasic&root-directory=apps%2Fdocs&skippable-integrations=1&teamSlug=vercel&utm_source=create-turbo"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            href="https://turborepo.com/docs?utm_source"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondary}
-          >
-            Read our docs
-          </a>
+  useEffect(() => {
+    setLocation(window.location.hostname);
+    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_SERVER_URL || 'http://localhost';
+    const socketPort = process.env.NEXT_PUBLIC_SOCKET_SERVER_PORT || '8880';
+    const socketServer = `${socketUrl}:${socketPort}`;
+    const getFirstInfo = async () => {
+      try {
+        const response = await fetch(`${socketServer}/health`);
+        if (response.ok) {
+          setIsOnline(true);
+          setServerData(await response.json());
+        } else {
+          setIsOnline(false);
+        }
+      } catch (error) {
+        console.error('Health check failed:', error);
+        setIsOnline(false);
+      }
+    };
+    getFirstInfo();
+
+    const socket = io(socketServer, {
+      transports: ['websocket', 'polling']
+    });
+
+
+    socket.on('disconnect', () => {
+      setIsOnline(false);
+    });
+
+    socket.on('webClient', (data: any) => {
+      setServerData(data);
+    });
+
+    return () => {
+      socket.close();
+    };
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
+      <div className="container mx-auto px-4 py-16">
+        {/* Header */}
+        <div className="text-center mb-16">
+          <h1 className="text-5xl font-bold text-white mb-4">
+            ProtoShock Server
+          </h1>
+          <p className="text-xl text-gray-300 max-w-2xl mx-auto">
+            beep boop beep boop
+          </p>
+          <p className="text-xl text-gray-300 max-w-2xl mx-auto">
+            Server IP: <span className="font-bold">{location}:{process.env.NEXT_PUBLIC_APP_PORT}</span>
+            {/* Click to copy */}
+            <button
+              className="ml-2 text-blue-400 hover:text-blue-300 cursor-pointer"
+              onClick={() => {
+                navigator.clipboard.writeText(location + ":" + process.env.NEXT_PUBLIC_APP_PORT);
+              }}
+            >
+              Copy IP
+            </button>
+          </p>
         </div>
-        <Button appName="web" className={styles.secondary}>
-          Open alert
-        </Button>
-      </main>
-      <footer className={styles.footer}>
-        <a
-          href="https://vercel.com/templates?search=turborepo&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          href="https://turborepo.com?utm_source=create-turbo"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to turborepo.com →
-        </a>
-      </footer>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-center">
+            <div className={`text-3xl font-bold mb-2 ${isOnline ? 'text-emerald-400' : 'text-red-400'}`}>
+              {isOnline ? 'Online' : 'Offline'}
+            </div>
+            <div className="text-gray-300">Server Status</div>
+          </div>
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-center">
+            <div className="text-3xl font-bold text-blue-400 mb-2">{serverData.playerCount}</div>
+            <div className="text-gray-300">Online Players</div>
+          </div>
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-center">
+            <div className="text-3xl font-bold text-purple-400 mb-2">{serverData.roomsCount}</div>
+            <div className="text-gray-300">Active Rooms</div>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-center">
+            <div className="text-3xl font-bold text-yellow-400 mb-2">{serverData.uptime}</div>
+            <div className="text-gray-300">Uptime</div>
+          </div>
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-center">
+            <div className="text-3xl font-bold text-green-400 mb-2">{serverData.memoryUsage}</div>
+            <div className="text-gray-300">Memory Usage</div>
+          </div>
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-center">
+            <div className="text-3xl font-bold text-pink-400 mb-2">{serverData.countryCode || 'N/A'}</div>
+            <div className="text-gray-300">Country Code</div>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="text-center">
+          {process.env.NEXT_PUBLIC_ENABLE_ADMIN_PANEL === 'true' && (
+            <Link
+              href="/admin"
+              className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg transition-colors duration-200 shadow-lg"
+            >
+              Open Admin Dashboard
+            </Link>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="mt-16 text-center text-gray-400">
+          <p>Built with Next.js, TypeScript, and TailwindCSS</p>
+        </div>
+      </div>
     </div>
   );
 }

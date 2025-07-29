@@ -1,18 +1,21 @@
 import { Server, Socket } from "socket.io";
 import { App } from "uWebSockets.js";
 import { instrument } from "@socket.io/admin-ui";
+import death from 'death'
+const DEATH_HANDLER = death({ uncaughtException: true })
 
 import registerPingHandler from "@socket/events/ping";
 import registerDisconnectHandler from "@socket/events/disconnect";
-import registerWebClientConnectHandler from "@socket/events/webClientConnect";
+import registerWebClientHandler from "@socket/events/webClient";
 import registerQueryHandler from "@socket/events/query";
 import registerMessageHandler from "@socket/events/encodedMessage";
 import registerApiStatsHandler from "@socket/events/api-stats";
-
-import { serverData, webclients } from "@socket/global";
-import { checkRoomValidity, convertSecondsToUnits, getTotalPlayerCount, scheduleGc, internal } from "@socket/util";
-import { RoomSummary } from "@socket/types";
+import registerAdminActionsHandler from "@socket/events/adminActions";
+import { registerAPIHandler } from "./handlers/RestAPIHandler";
+import { webclients, clientStates } from "@socket/global";
+import { checkRoomValidity, scheduleGc, internal, getWebClientData } from "@socket/util";
 import { serverOptions } from "@socket/constants";
+
 
 console.log("[Server] Starting Socket Server...");
 if (global.gc) {
@@ -55,6 +58,9 @@ const io = new Server({
     pingTimeout: 60000,
 });
 
+// Register API handler for RESTful requests
+registerAPIHandler(uws);
+
 if (serverOptions.enableSocketAdminUI) {
     instrument(io, {
         auth: {
@@ -72,34 +78,40 @@ setInterval(checkRoomValidity, 10000);
 
 scheduleGc();
 
-setInterval(() => {
-    if (webclients.connectedWebClients.size > 0) {
-        const roomsList: RoomSummary[] = [];
-        serverData.rooms.forEach((room) => {
-            roomsList.push({
-                RoomID: room.id,
-                RoomName: room.name,
-                RoomPlayerCount: room.playerCount,
-                RoomPlayerMax: room.maxplayers,
-                RoomGameVersion: room.gameversion,
-            });
-        });
+if (serverOptions.enableWebClient) {
+    console.log("[Server] Web Client support is enabled.");
+    // Send periodic updates to web clients (reduced frequency for better performance)
+    setInterval(() => {
+        if (webclients.connectedWebClients.size > 0) {
+            webclients.connectedWebClients.forEach((client) => {
+                const data = getWebClientData();
+                client.emit("webClient", data);
+            })
+        }
+    }, 1000);
+} else {
+    console.log("[Server] Web Client support is disabled.");
+    console.log("[Server] Admin dashboard will not be available.");
+}
 
-        webclients.connectedWebClients.forEach((client) => {
-            const data = {
-                rooms: roomsList,
-                playerCount: getTotalPlayerCount(),
-                uptime: convertSecondsToUnits(Math.round(process.uptime())),
-                memoryUsage: Number((process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)),
-            };
-            client.emit("webClient", data);
-        })
-    }
-}, 1000);
+// Log server stats every minute
+setInterval(async () => {
+    const { databaseHandler } = await import("@socket/global");
+    await databaseHandler.logServerStats();
+}, 60000);
 
 const onConnection = (socket: Socket) => {
-    internal.log(`[Server] New connection from ${socket.id}`);
+    internal.log('[Connection] New client connected:', socket.id);
 
+    // Initialize client state tracking
+    clientStates.set(socket.id, {
+        connectedAt: Date.now(),
+        lastMessageAt: Date.now(),
+        messageCount: 0,
+        consecutiveErrors: 0,
+        isHealthy: true
+    });
+    /*
     // Add comprehensive event logging
     socket.onAny((eventName, ...args) => {
         internal.log(`[Server] Received event '${eventName}' from ${socket.id}`);
@@ -107,10 +119,12 @@ const onConnection = (socket: Socket) => {
     });
 
     // Log when socket sends any event
+    
     socket.onAnyOutgoing((eventName, ...args) => {
         internal.log(`[Server] Sending event '${eventName}' to ${socket.id}`);
         internal.log(`[Server] Outgoing data:`, args);
     });
+    */
 
     // Log socket errors
     socket.on("error", (error) => {
@@ -120,9 +134,13 @@ const onConnection = (socket: Socket) => {
     registerMessageHandler(io, socket);
     registerQueryHandler(io, socket);
     registerPingHandler(io, socket);
-    registerWebClientConnectHandler(io, socket);
+    if (serverOptions.enableWebClient) {
+        // Register web client connection handler
+        registerWebClientHandler(io, socket);
+    }
     registerDisconnectHandler(io, socket);
     registerApiStatsHandler(io, socket);
+    registerAdminActionsHandler(io, socket);
 }
 
 io.on("connection", onConnection);
@@ -130,3 +148,64 @@ io.on("connection", onConnection);
 uws.listen(serverOptions.port, () => {
     console.log(`[Server] HTTP Server listening on port ${serverOptions.port}`);
 });
+
+DEATH_HANDLER((signal) => {
+    gracefulShutdown(signal as NodeJS.Signals);
+});
+
+process.on("SIGABRT", (signal) => {
+    console.log("[Server] Received SIGABRT signal.");
+    gracefulShutdown(signal);
+});
+
+export async function gracefulShutdown(signal: NodeJS.Signals) {
+    const socketsToDisconnect = new Map<string, Socket>();
+    console.log("[Server] Got signal: " + signal, "[Server] Cleaning up & exiting...");
+
+    // Disconnect all clients
+    console.log("[Server] Disconnecting all clients...");
+    for (const [socketId] of clientStates) {
+        const socket = io.sockets.sockets.get(socketId);
+        if (socket && socket.connected) {
+            console.log("[Server] Sending shutdown message to all clients...");
+            socket.emit('adminChat', {
+                message: "[Server] Game server shutting down - Please reconnect from main menu.",
+                roomId: undefined,
+                global: true
+            });
+            socketsToDisconnect.set(socketId, socket);
+        }
+        clientStates.delete(socketId);
+    }
+    console.log("[Server] Disconnecting all clients in 3 seconds...");
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+    for (const [socketId, socket] of socketsToDisconnect) {
+        try {
+            socket.emit("leave");
+            socket.disconnect(true);
+            socketsToDisconnect.delete(socketId);
+            console.log(`[Server] Socket ${socketId} disconnected.`);
+        } catch (error) {
+            console.error(`[Server] Error disconnecting socket ${socketId}:`, error);
+        }
+    }
+
+
+    console.log("[Server] Disconnecting main in 3 seconds...");
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+    io.disconnectSockets(true);
+    // Close all sockets gracefully
+    io.close(() => {
+        console.log("[Server] All sockets closed.");
+    });
+
+    // Optionally, you can also log server stats before shutdown
+    import("@socket/global").then(({ databaseHandler }) => {
+        databaseHandler.logServerStats().then(() => {
+            console.log("[Server] Server stats logged before shutdown.");
+        });
+    });
+
+    console.log("[Server] Shutdown complete.");
+    process.exit(0);
+}

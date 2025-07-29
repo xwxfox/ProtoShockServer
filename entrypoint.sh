@@ -1,164 +1,142 @@
 #!/bin/bash
+# script to run / manage every service in the protoshock server, also runs health checks etc to make sure everything works, and restarts services if not.
+# --- Configuration ---
+set -o pipefail # Fail a pipeline if any command fails.
 
 PING_ENDPOINT_URL="http://localhost:3000/api/ping"
 PING_RESPONSE='{"message":"Pong"}'
 WEB_PORT=3000
 SOCKET_PORT=8880
-WORKING_DIR=${PWD}
 
-echo "Starting ProtoShock Server..."
-echo "Working directory: $WORKING_DIR"
+# Get the script's directory for robust paths
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
-start_socket() {
-    echo "Starting socket server..."
-    cd $WORKING_DIR/apps/socket
-    npm run start &
-    SOCKET_PID=$!
-    echo "Socket server started with PID $SOCKET_PID"
+# Use associative arrays to track process info
+declare -A PIDS
+declare -A PGIDS
+
+# --- Universal Cleanup Function ---
+cleanup() {
+    # Disable the trap to prevent recursive calls during cleanup
+    trap - SIGINT SIGTERM EXIT
+
+    echo -e "\nSignal caught, initiating cleanup..."
+    # The kill_service function now contains all the waiting logic.
+    kill_service "web" "${PGIDS['web']}" "$WEB_PORT"
+    kill_service "socket" "${PGIDS['socket']}" "$SOCKET_PORT"
+    echo "✅ Cleanup complete. ProtoShock Server stopped."
+
+    # Explicitly exit the script with a success code to prevent the main loop from continuing.
+    exit 0
 }
 
-start_web() {
-    echo "Starting web server..."
-    cd $WORKING_DIR/apps/web
-    npm run start &
-    WEB_PID=$!
-    echo "Web server started with PID $WEB_PID"
+# --- Set Trap Immediately ---
+# This guarantees the cleanup function will run, no matter how the script exits.
+trap cleanup SIGINT SIGTERM EXIT
+
+# --- Service Management Functions ---
+
+kill_service() {
+    local service_name="$1"
+    local pgid="$2"
+    local port="$3"
+
+    echo "--- Stopping $service_name service ---"
+    if [[ -z "$pgid" && -z "$port" ]]; then
+        echo "No PGID or Port for $service_name to stop."
+        return
+    fi
+
+    # Step 1: Attempt graceful shutdown via Process Group
+    if [[ -n "$pgid" ]]; then
+        echo "Sending SIGTERM to process group $pgid..."
+        kill -TERM "-$pgid" 2>/dev/null || true
+        sleep 2 # Give it a moment to shut down gracefully
+    fi
+
+    # Step 2: Force-kill anything still listening on the port (Your robust method)
+    echo "Ensuring port $port is free..."
+    if command -v lsof >/dev/null; then
+        lsof -ti:"$port" | xargs --no-run-if-empty kill -9 2>/dev/null || true
+    elif command -v netstat >/dev/null; then
+        netstat -tlnp 2>/dev/null | grep ":$port " | awk '{print $7}' | cut -d'/' -f1 | xargs --no-run-if-empty kill -9 2>/dev/null || true
+    fi
+
+    # Step 3: Loop to verify the port is actually free
+    for i in {1..10}; do
+        if ! ss -lnt 2>/dev/null | grep -q ":$port "; then
+             echo "Port $port is now free."
+             if [[ -n "${PIDS[$service_name]}" ]]; then wait "${PIDS[$service_name]}" 2>/dev/null; fi
+             echo "--- $service_name service stopped ---"
+             return 0
+        fi
+        echo "Port $port still in use, waiting... (attempt $i/10)"
+        sleep 1
+    done
+
+    # Step 4: Final effort if port is still blocked
+    echo "⚠️ ERROR: Port $port could not be freed after 10 seconds."
+    if [[ -n "$pgid" ]]; then
+        echo "Sending SIGKILL to process group $pgid as a last resort."
+        kill -KILL "-$pgid" 2>/dev/null || true
+        wait "${PIDS[$service_name]}" 2>/dev/null
+    fi
+    echo "--- $service_name service stopped ---"
 }
 
-start_socket
-start_web
+start_service() {
+    local service_name="$1"
+    local service_dir="$2"
+    
+    echo "Starting $service_name server..."
+    cd "$SCRIPT_DIR/apps/$service_dir"
+    setsid npm run start &
+    local pid=$!
+    PIDS["$service_name"]=$pid
+    PGIDS["$service_name"]=$(ps -o pgid= "$pid" | tr -d ' ')
+    echo "$service_name server starting with PID $pid and PGID ${PGIDS[$service_name]}"
+}
 
-echo "Waiting for services to start..."
-echo "Socket PID: $SOCKET_PID"
-echo "Web PID: $WEB_PID"
-
-# Wait 10 seconds before first health check
-sleep 10
+# --- Health Check Functions ---
 
 check_web() {
-    curl -s $PING_ENDPOINT_URL | grep -q "$PING_RESPONSE" || return 1
+    curl -s "$PING_ENDPOINT_URL" 2>/dev/null | grep -q "$PING_RESPONSE"
 }
 
 check_socket() {
-    kill -0 $SOCKET_PID 2>/dev/null
+    nc -z localhost "$SOCKET_PORT" 2>/dev/null
 }
 
-kill_socket() {
-    echo "Killing socket process..."
+# --- Main Execution Logic ---
 
-    if [ ! -z "$SOCKET_PID" ]; then
-        echo "Killing npm process $SOCKET_PID and its children..."
-        pkill -P $SOCKET_PID 2>/dev/null || true
-        kill $SOCKET_PID 2>/dev/null || true
-    fi
-    
-        # Kill any processes using port (multiple approaches)
-    echo "Killing processes on port $SOCKET_PORT..."
+echo "Starting ProtoShock Server..."
 
-    # Try with lsof first
-    if command -v lsof >/dev/null 2>&1; then
-        lsof -ti:$SOCKET_PORT | xargs kill -9 2>/dev/null || true
-    fi
-    
-    # Try with netstat as backup
-    if command -v netstat >/dev/null 2>&1; then
-        netstat -tlnp 2>/dev/null | grep ":$SOCKET_PORT " | awk '{print $7}' | cut -d'/' -f1 | xargs kill -9 2>/dev/null || true
-    fi
-    
-    # Kill any node processes that might be Next.js
-    pkill -f "next start" 2>/dev/null || true
-    pkill -f "next-server" 2>/dev/null || true
-    
-    echo "Waiting for port to be freed..."
-    sleep 5
-    
-    # Final check - if port is still in use, wait longer
-    for i in {1..10}; do
-        if ! netstat -ln 2>/dev/null | grep -q ":$SOCKET_PORT " && ! ss -ln 2>/dev/null | grep -q ":$SOCKET_PORT "; then
-            echo "Port $SOCKET_PORT is now free"
-            break
-        fi
-        echo "Port $SOCKET_PORT still in use, waiting... (attempt $i/10)"
-        sleep 2
-    done
-}
+echo "Cleaning up any existing services if they exist..."
+kill_service "web" "" "$WEB_PORT"
+kill_service "socket" "" "$SOCKET_PORT"
 
-kill_web() {
-    echo "Killing web processes..."
-    # Kill the npm process and all its children
+echo "Starting services..."
+start_service "socket" "socket"
+start_service "web" "web"
 
-    if [ ! -z "$WEB_PID" ]; then
-        echo "Killing npm process $WEB_PID and its children..."
-        pkill -P $WEB_PID 2>/dev/null || true
-        kill $WEB_PID 2>/dev/null || true
-    fi
-    
-    # Kill any processes using port (multiple approaches)
-    echo "Killing processes on port $WEB_PORT..."
+echo "Waiting for services to become available..."
+sleep 5
 
-    # Try with lsof first
-    if command -v lsof >/dev/null 2>&1; then
-        lsof -ti:$WEB_PORT | xargs kill -9 2>/dev/null || true
-    fi
-    
-    # Try with netstat as backup
-    if command -v netstat >/dev/null 2>&1; then
-        netstat -tlnp 2>/dev/null | grep ":$WEB_PORT " | awk '{print $7}' | cut -d'/' -f1 | xargs kill -9 2>/dev/null || true
-    fi
-    
-    # Kill any node processes that might be Next.js
-    pkill -f "next start" 2>/dev/null || true
-    pkill -f "next-server" 2>/dev/null || true
-    
-    echo "Waiting for port to be freed..."
-    sleep 5
-    
-    # Final check - if port is still in use, wait longer
-    for i in {1..10}; do
-        if ! netstat -ln 2>/dev/null | grep -q ":$WEB_PORT " && ! ss -ln 2>/dev/null | grep -q ":$WEB_PORT "; then
-            echo "Port $WEB_PORT is now free"
-            break
-        fi
-        echo "Port $WEB_PORT still in use, waiting... (attempt $i/10)"
-        sleep 2
-    done
-}
-
+# Main monitoring loop
 while true; do
-    # Check web
     if ! check_web; then
-        echo "Web not responding, restarting..."
-        kill_web
-        
-        start_web
-        
-        # Wait and verify it started successfully
-        sleep 15
-        if ! check_web; then
-            echo "Web failed to start properly, will retry on next cycle"
-        else
-            echo "Web restarted successfully"
-        fi
+        echo "Web health check failed. Restarting..."
+        kill_service "web" "${PGIDS['web']}" "$WEB_PORT"
+        start_service "web" "web"
+        sleep 5
     fi
 
-    # Check CCHP
     if ! check_socket; then
-        echo "Socket server not running, restarting..."
-        kill_socket
-
-        start_socket
-
-        echo "New Socket PID: $SOCKET_PID"
-
-        # Wait and verify it started successfully
-        sleep 15
-
-        if ! check_socket; then
-            echo "Socket server failed to start properly, will retry on next cycle"
-        else
-            echo "Socket server restarted successfully"
-        fi
+        echo "Socket health check failed. Restarting..."
+        kill_service "socket" "${PGIDS['socket']}" "$SOCKET_PORT"
+        start_service "socket" "socket"
+        sleep 5
     fi
 
-    sleep 60  # Check every minute
+    sleep 10
 done

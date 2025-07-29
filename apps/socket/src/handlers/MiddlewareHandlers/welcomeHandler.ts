@@ -15,7 +15,8 @@ export const welcomeHandler: ActionHandler = (socket, action, context) => {
 
         return {
             result: ActionResult.SEND_ADDITIONAL,
-            additionalActions: [welcomeMessage]
+            additionalActions: [welcomeMessage],
+            delay: 1000
         };
     }
 

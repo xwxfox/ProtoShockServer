@@ -91,6 +91,11 @@ export class ServerState {
         if (this.rooms.size === 0) {
             clearInterval(messageInterval);
         }
+
+        // Log player leave to database
+        import('../global').then(({ databaseHandler }) => {
+            databaseHandler.logPlayerLeave(player);
+        });
     }
 
     createRoom(socket: Socket, roomName: string, _scene: string, _scenepath: string, _gameversion: string, max: number) {
@@ -113,6 +118,10 @@ export class ServerState {
         };
         this.rooms.set(room.id, room);
         this.joinRoom(socket, room.id, _gameversion, true);
+        // Log room creation to database
+        import('../global').then(({ databaseHandler }) => {
+            databaseHandler.logServerStats();
+        });
     }
     joinRoom(socket: Socket, roomId: string, _gameversion: string, ishosting: boolean) {
         const player = this.getPlayerBySocket(socket);
@@ -127,7 +136,8 @@ export class ServerState {
             socket: socket,
             roomId: roomId,
             local: true,
-            hosting: ishosting
+            hosting: ishosting,
+            name: "PLAYER",
         };
         room.players.set(newPlayer.id, newPlayer);
         this.players.set(newPlayer.id, newPlayer);
@@ -137,5 +147,10 @@ export class ServerState {
             console.log(`[Server] Room ${roomId}'s Player Count: ${room.playerCount}`);
         }
         broadcastRoomInfo();
+
+        // Log player join to database
+        import('../global').then(({ databaseHandler }) => {
+            databaseHandler.logPlayerJoin(newPlayer, room);
+        });
     }
 }

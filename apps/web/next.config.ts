@@ -3,6 +3,10 @@ import type { NextConfig } from 'next';
 const nextConfig: NextConfig = {
     trailingSlash: false,
     skipTrailingSlashRedirect: true,
+    reactStrictMode: true,
+    eslint: {
+        ignoreDuringBuilds: true, // Ignore ESLint errors during build
+    },
     async rewrites() {
         return {
             beforeFiles: [

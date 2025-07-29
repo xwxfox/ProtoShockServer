@@ -17,7 +17,7 @@ export const transformThrottleHandler: ActionHandler = (socket, action, context)
 
             // Warn on excessive updates
             if (now - lastTime < 500) {
-                internal.log(`[${context.timestamp}] Excessive transform updates for ${key}`);
+                //  internal.log(`[${context.timestamp}] Excessive transform updates for ${key}`);
                 return { result: ActionResult.PASS_THROUGH };
             }
 
