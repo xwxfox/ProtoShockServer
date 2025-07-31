@@ -15,3 +15,8 @@ services:
     # You can define environment variables here if your application needs them
     # environment:
     #   - NODE_ENV=production
+    volumes:
+      - ./.socket.production.env:/app/packages/socket/.env.production
+      - ./.web.production.env:/app/packages/web/.env.production
+      - ./.database.production.env:/app/packages/database/.env.production
+      - ./shared/magic.db:/app/shared/magic.db
