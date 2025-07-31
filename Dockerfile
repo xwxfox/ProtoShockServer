@@ -4,12 +4,6 @@ WORKDIR /app
 # Copy source to the container
 COPY . .
 
-# Make scripts executable.
-RUN chmod +x ./setup.sh ./entrypoint.sh
-
-# Update npm to the latest version
-RUN npm install -g npm@latest
-
 # Install necessary packages
 RUN apt-get update && apt-get install -y \
     procps \
@@ -38,6 +32,9 @@ RUN npm install --legacy-peer-deps --include=optional \
 RUN npm run build
 
 EXPOSE 3000 8880
+
+# Make sure the entrypoint script is executable
+RUN chmod +x ./entrypoint.sh
 
 # its go time
 ENTRYPOINT ["/app/entrypoint.sh"]
