@@ -11,7 +11,18 @@ RUN chmod +x ./setup.sh ./entrypoint.sh
 RUN npm install -g npm@latest
 
 # Install necessary packages
-RUN apt-get update && apt-get install -y procps curl netcat-traditional
+RUN apt-get update && apt-get install -y \
+    procps \
+    curl \
+    netcat-traditional \
+    build-essential \
+    python3 \
+    python3-pip \
+    git \
+    pkg-config \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install turborepo deps + drizzle-kit and do migrations
 RUN ./setup.sh
