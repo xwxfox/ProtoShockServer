@@ -29,6 +29,13 @@ WORKDIR /app/packages/database
 RUN npm run migrate
 
 WORKDIR /app
+
+# Create empty env files
+RUN touch /app/packages/socket/.env.production \
+    && touch /app/packages/web/.env.production \
+    && touch /app/packages/database/.env.production \
+    && touch /app/shared/magic.db
+    
 # Build with turborepo owo
 RUN npm run build
 
@@ -37,10 +44,6 @@ EXPOSE 3000 8880
 # Make sure the entrypoint script is executable
 RUN chmod +x ./entrypoint.sh
 
-RUN touch /app/packages/socket/.env.production \
-    && touch /app/packages/web/.env.production \
-    && touch /app/packages/database/.env.production
-    
 # its go time
 ENTRYPOINT ["/app/entrypoint.sh"]
 
