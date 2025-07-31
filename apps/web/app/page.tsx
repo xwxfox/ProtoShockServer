@@ -3,6 +3,10 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { config } from 'dotenv'
+config({
+  path: process.cwd() + "./" + (process.env.NODE_ENV === 'production' ? '.env.production' : '.env.development')
+})
 export default function Home() {
   const [isOnline, setIsOnline] = useState(false);
   const [location, setLocation] = useState<string>("owo");
@@ -19,7 +23,7 @@ export default function Home() {
     setLocation(window.location.hostname);
     const socketUrl = process.env.NEXT_PUBLIC_SOCKET_SERVER_URL || 'http://localhost';
     const socketPort = process.env.NEXT_PUBLIC_SOCKET_SERVER_PORT || '8880';
-    const socketServer = `${socketUrl}:${socketPort}`;
+    const socketServer = `${process.env.NEXT_PUBLIC_SHOW_PORT_IN_SERVER_IP === "false" ? socketUrl : `${socketUrl}:${socketPort}`}`;
     const getFirstInfo = async () => {
       try {
         const response = await fetch(`${socketServer}/health`);

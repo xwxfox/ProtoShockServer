@@ -26,6 +26,7 @@
     "packages/*"
   ],
   "dependencies": {
-    "drizzle-kit": "^0.31.4"
+    "drizzle-kit": "^0.31.4",
+    "dotenv": "^17.2.1"
   }
 }
