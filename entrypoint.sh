@@ -15,6 +15,15 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 declare -A PIDS
 declare -A PGIDS
 cd ./packages/database && npm run migrate && cd "$SCRIPT_DIR"
+
+rm -rf ./apps/web/.env.production
+rm -rf ./apps/socket/.env.production
+rm -rf ./packages/database/.env.production
+rm -rf ./shared/magic.db
+cp ./.socket.production.env ./apps/socket/.env.production
+cp ./.web.production.env ./apps/web/.env.production
+cp ./.database.production.env ./packages/database/.env.production
+cp ./shared/_magic.db ./shared/magic.db
 # --- Universal Cleanup Function ---
 cleanup() {
     # Disable the trap to prevent recursive calls during cleanup
