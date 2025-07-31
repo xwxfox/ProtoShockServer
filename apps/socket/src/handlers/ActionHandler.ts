@@ -1,14 +1,13 @@
 import { Action, ActionContext, ActionResult } from "@socket/types";
 import { Socket } from "socket.io";
 import { actionMiddleware } from "./ActionMiddleware";
-import { registerBuiltinHandlers } from "./BuiltinHandlers";
-import fs from "fs";
-
+// import { registerBuiltinHandlers } from "./BuiltinHandlers";
+import { internal } from "@socket/utils/Logging";
 // Track unique actions for logging (keep existing functionality)
 // const uniqueActions = new Set<Action>();
 
 // Initialize handlers on module load
-registerBuiltinHandlers();
+// registerBuiltinHandlers();
 
 /**
  * Main action handler that processes all incoming actions through the middleware system
@@ -18,7 +17,7 @@ export const handleAction = async (
     socket: Socket,
     action: Action,
     context?: Partial<ActionContext>
-): Promise<{ processedAction: Action | null, additionalActions?: Action[] }> => {
+): Promise<{ processedAction: Action | null, additionalActions?: Action[], delay?: number }> => {
     // Create action context
     const actionContext: ActionContext = {
         timestamp: Date.now(),
@@ -32,21 +31,22 @@ export const handleAction = async (
         // Handle the response
         switch (response.result) {
             case ActionResult.BLOCK:
-                console.log(`Action blocked: ${action.action}`, response.reason);
+                internal.log(`Action blocked: ${action.action}`, response.reason);
                 return { processedAction: null };
 
             case ActionResult.MODIFY:
-                console.log(`Action modified: ${action.action}`, response.reason);
+                internal.log(`Action modified: ${action.action}`, response.reason);
                 return {
                     processedAction: response.modifiedAction || null,
                     additionalActions: response.additionalActions
                 };
 
             case ActionResult.SEND_ADDITIONAL:
-                console.log(`Sending additional actions for: ${action.action}`);
+                internal.log(`Sending additional actions for: ${action.action}`);
                 return {
                     processedAction: response.modifiedAction || action,
-                    additionalActions: response.additionalActions
+                    additionalActions: response.additionalActions,
+                    delay: response.delay || 0
                 };
 
             case ActionResult.PASS_THROUGH:

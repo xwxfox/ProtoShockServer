@@ -1,6 +1,6 @@
 import { Server, Socket } from "socket.io";
 import { serverData } from "@socket/global";
-import { internal } from "@socket/util";
+import { internal } from "@socket/utils/Logging";
 
 export default (io: Server, socket: Socket) => {
     socket.on("ping", (timestamp) => {

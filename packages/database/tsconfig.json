@@ -1,0 +1,38 @@
+{
+  "compilerOptions": {
+    "allowJs": false,
+    "declaration": true,
+    "declarationMap": true,
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleDetection": "force",
+    "moduleResolution": "node",
+    "strict": true,
+    "skipLibCheck": true,
+    "typeRoots": [
+      "./node_modules/@types"
+    ],
+    "lib": [
+      "ES2022"
+    ],
+    "paths": {
+      "@db/*": [
+        "./src/*"
+      ]
+    },
+    "outDir": "dist",
+  },
+  "include": [
+    "./src/***",
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+  ],
+  "tsc-alias": {
+    "resolveFullPaths": true,
+    "verbose": false
+  }
+}
