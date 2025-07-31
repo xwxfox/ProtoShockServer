@@ -1,5 +1,4 @@
 import { ServerState } from '@socket/handlers/ServerState';
-
 import { MessageQueue } from '@socket/handlers/MessageQueue';
 import { databaseHandler } from '@socket/handlers/DatabaseHandler';
 import { Socket } from 'socket.io';

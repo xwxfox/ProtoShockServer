@@ -1,7 +1,7 @@
 import { ActionHandler, RPCAction, ChatMessageRPC, ActionResult } from "@socket/types";
 import { actionMiddleware } from "@socket/handlers/ActionMiddleware";
 import { serverData } from "@socket/global";
-import { cleanChatMessage } from "@socket/util";
+import { cleanChatMessage } from "@socket/utils/Formatters";
 export interface ChatMonitoringMessage {
     senderId: string;
     message: string;

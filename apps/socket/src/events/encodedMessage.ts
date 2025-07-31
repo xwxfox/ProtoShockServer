@@ -1,6 +1,7 @@
 import { Server, Socket } from "socket.io";
 import { handleAction } from "@socket/handlers/ActionHandler";
-import { runAction, sendCompressedMessage } from "@socket/util";
+import { sendCompressedMessage } from "@socket/utils/CompressedServerIO";
+import { runAction } from "@socket/utils/MainServerActionHandler";
 import * as zlib from 'zlib';
 import { clientStates } from "@socket/global";
 import { createChatMessage } from "@socket/utils/RPCFactory";

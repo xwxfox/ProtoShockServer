@@ -1,5 +1,5 @@
 import { ActionHandler, ActionResult } from "@socket/types";
-import { internal } from "@socket/util";
+import { internal } from "@socket/utils/Logging";
 
 // Logging handler - runs for all actions
 export const loggingHandler: ActionHandler = (socket, action, context) => {

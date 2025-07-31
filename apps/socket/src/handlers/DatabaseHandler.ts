@@ -1,8 +1,7 @@
-import { Socket } from 'socket.io';
 import { ProtoDBClass } from '@protoshock/database';
 import { playerStats, serverStats, chatMessages, serverEvents, adminActions } from '@protoshock/database';
 import { serverData } from '@socket/global';
-import { Player, Room, RPC } from '@socket/types';
+import { Player, Room } from '@socket/types';
 import { eq, gte, desc, asc } from 'drizzle-orm';
 
 export class DatabaseHandler {

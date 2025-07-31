@@ -1,7 +1,7 @@
 import { Server, Socket } from "socket.io";
 import { webclients, serverData } from "@socket/global";
 import { serverOptions } from "@socket/constants";
-import { getWebClientData } from "@socket/util";
+import { getWebClientData } from "@socket/utils/BasicServerIO";
 
 export default (io: Server, socket: Socket) => {
     socket.on("webClient", () => {

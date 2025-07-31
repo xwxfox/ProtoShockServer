@@ -1,7 +1,8 @@
 import { serverOptions } from "@socket/constants";
 import { serverData } from "@socket/global";
 import { RoomSummary } from "@socket/types";
-import { formatUptime, getTotalPlayerCount } from "@socket/util";
+import { formatUptime } from "@socket/utils/Formatters";
+import { getTotalPlayerCount } from "@socket/utils/BasicServerIO";
 import { HttpResponse, TemplatedApp } from "uWebSockets.js";
 
 export function registerAPIHandler(uws: TemplatedApp) {
@@ -16,7 +17,7 @@ export function registerAPIHandler(uws: TemplatedApp) {
             roomsList.push({
                 RoomID: room.id,
                 RoomName: room.name,
-                RoomPlayerCount: room.playerCount,
+                RoomPlayerCount: room.players.size,
                 RoomPlayerMax: room.maxplayers,
                 RoomGameVersion: room.gameversion,
             });

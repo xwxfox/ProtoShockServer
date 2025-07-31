@@ -11,11 +11,13 @@ import registerQueryHandler from "@socket/events/query";
 import registerMessageHandler from "@socket/events/encodedMessage";
 import registerApiStatsHandler from "@socket/events/api-stats";
 import registerAdminActionsHandler from "@socket/events/adminActions";
-import { registerAPIHandler } from "./handlers/RestAPIHandler";
+import { registerAPIHandler } from "@socket/handlers/RestAPIHandler";
 import { webclients, clientStates } from "@socket/global";
-import { checkRoomValidity, scheduleGc, internal, getWebClientData } from "@socket/util";
 import { serverOptions } from "@socket/constants";
-
+import { internal } from "@socket/utils/Logging";
+import { startInactivityChecker, updateLastEventTimestamp } from "@socket/utils/inactivity";
+import { checkRoomValidity, getWebClientData } from "@socket/utils/BasicServerIO";
+import { scheduleGc } from "@socket/utils/ServerScheduler";
 
 console.log("[Server] Starting Socket Server...");
 if (global.gc) {
@@ -76,11 +78,14 @@ if (serverOptions.enableSocketAdminUI) {
 io.attachApp(uws);
 setInterval(checkRoomValidity, 10000);
 
+// Inactivity checker for game client sockets - This is needed for handling clients that are technically disconnected but didnt fire the leave event
+startInactivityChecker(io);
+
 scheduleGc();
 
 if (serverOptions.enableWebClient) {
     console.log("[Server] Web Client support is enabled.");
-    // Send periodic updates to web clients (reduced frequency for better performance)
+    // Send periodic updates to web clients
     setInterval(() => {
         if (webclients.connectedWebClients.size > 0) {
             webclients.connectedWebClients.forEach((client) => {
@@ -111,24 +116,29 @@ const onConnection = (socket: Socket) => {
         consecutiveErrors: 0,
         isHealthy: true
     });
-    /*
-    // Add comprehensive event logging
-    socket.onAny((eventName, ...args) => {
-        internal.log(`[Server] Received event '${eventName}' from ${socket.id}`);
-        internal.log(`[Server] Event data:`, args);
-    });
 
-    // Log when socket sends any event
-    
-    socket.onAnyOutgoing((eventName, ...args) => {
-        internal.log(`[Server] Sending event '${eventName}' to ${socket.id}`);
-        internal.log(`[Server] Outgoing data:`, args);
-    });
-    */
+    if (serverOptions.debugMode > 3) {
+        socket.onAny((eventName, ...args) => {
+            internal.debug(`[Server] Received event '${eventName}' from ${socket.id}`);
+            internal.debug(`[Server] Event data:`, args);
+        });
+
+        // Log when socket sends any event
+
+        socket.onAnyOutgoing((eventName, ...args) => {
+            internal.debug(`[Server] Sending event '${eventName}' to ${socket.id}`);
+            internal.debug(`[Server] Outgoing data:`, args);
+        });
+    }
 
     // Log socket errors
     socket.on("error", (error) => {
         console.error(`[Server] Socket error for ${socket.id}:`, error);
+    });
+
+    socket.onAny(() => {
+        // Update last event timestamp for inactivity tracking
+        updateLastEventTimestamp(socket);
     });
 
     registerMessageHandler(io, socket);

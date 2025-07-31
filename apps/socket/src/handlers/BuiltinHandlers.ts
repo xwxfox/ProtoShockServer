@@ -1,16 +1,17 @@
-import { actionMiddleware } from "./ActionMiddleware";
+import { actionMiddleware } from "@socket/handlers/ActionMiddleware";
 
-import { loggingHandler } from "./MiddlewareHandlers/loggingHandler";
-import { antiCheatHandler } from "./MiddlewareHandlers/antiCheatHandler";
-import { chatFilterHandler } from "./MiddlewareHandlers/chatFilterHandler";
-import { rateLimitHandler } from "./MiddlewareHandlers/rateLimitHandler";
-import { transformThrottleHandler } from "./MiddlewareHandlers/transformThrottleHandler";
-import { roomValidationHandler } from "./MiddlewareHandlers/roomValidationHandler";
-import { welcomeHandler } from "./MiddlewareHandlers/welcomeHandler";
-import { chatCommandHandler } from "./MiddlewareHandlers/basicCommandHandler";
-import { transformSmoothingHandler } from "./MiddlewareHandlers/transformSmoothing";
-import { chatMonitoringHandler } from "./MiddlewareHandlers/chatMonitoringHandler";
-import { mergePlayerNameWithPlayerObjectHandler } from "./MiddlewareHandlers/mergeNameToPlayerId";
+import { loggingHandler } from "@socket/handlers/MiddlewareHandlers/loggingHandler";
+import { antiCheatHandler } from "@socket/handlers/MiddlewareHandlers/antiCheatHandler";
+import { chatFilterHandler } from "@socket/handlers/MiddlewareHandlers/chatFilterHandler";
+import { rateLimitHandler } from "@socket/handlers/MiddlewareHandlers/rateLimitHandler";
+import { transformThrottleHandler } from "@socket/handlers/MiddlewareHandlers/transformThrottleHandler";
+import { roomValidationHandler } from "@socket/handlers/MiddlewareHandlers/roomValidationHandler";
+import { welcomeHandler } from "@socket/handlers/MiddlewareHandlers/welcomeHandler";
+import { chatCommandHandler } from "@socket/handlers/MiddlewareHandlers/basicCommandHandler";
+import { transformSmoothingHandler } from "@socket/handlers/MiddlewareHandlers/transformSmoothing";
+import { chatMonitoringHandler } from "@socket/handlers/MiddlewareHandlers/chatMonitoringHandler";
+import { mergePlayerNameWithPlayerObjectHandler } from "@socket/handlers/MiddlewareHandlers/mergeNameToPlayerId";
+
 // Register all handlers
 export function registerBuiltinHandlers() {
     // Global handlers
