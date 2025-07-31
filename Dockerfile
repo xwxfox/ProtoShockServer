@@ -34,6 +34,7 @@ WORKDIR /app
 RUN touch /app/apps/socket/.env.production \
     && touch /app/apps/web/.env.production \
     && touch /app/packages/database/.env.production \
+    && mkdir /app/shared \
     && touch /app/shared/magic.db
     
 # Build with turborepo owo
