@@ -1,7 +1,7 @@
 import { Socket } from "socket.io";
 import { serverData } from "@socket/global";
 import { serverOptions } from "@socket/constants";
-import { Player, RoomSummary } from "@socket/types/Basics";
+import { RoomSummary } from "@socket/types/Basics";
 import { convertSecondsToUnits } from "@socket/utils/Formatters";
 import { SendMessage } from "@socket/utils/CompressedServerIO";
 import { WebClientData } from "@socket/types/WebClient";
@@ -52,12 +52,7 @@ export function checkRoomValidity() {
 
         room.players.forEach((player, playerId) => {
             // Get player info based on WebSocket
-            let playerBySocket: Player | undefined;
-            Array.from(serverData.players.values()).forEach((p) => {
-                if (p.id === playerId) {
-                    playerBySocket = p;
-                }
-            });
+            const playerBySocket = serverData.getPlayerBySocket(player.socket);
             if (!playerBySocket || playerBySocket.id !== player.id) {
                 invalidPlayers.push(playerId);
             }
