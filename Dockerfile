@@ -14,7 +14,7 @@ COPY package.json package-lock.json* ./
 
 WORKDIR /app
 # Install dependencies and force rebuild native modules
-RUN npm install --legacy-peer-deps --include=optional \
+RUN npm ci --legacy-peer-deps --include=optional \
   && npm rebuild lightningcss
 
 # Copy rest of the source to the container
