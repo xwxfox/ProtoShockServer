@@ -1,9 +1,6 @@
 # fuck you i cant be bothered to write anything cool
 npm install drizzle-kit turbo
-<<<<<<< HEAD
 rm -rf shared/drizzle/
-=======
->>>>>>> 1de386b7c3cfd8d0b385038b6214d0958a137c41
 cd packages/database
 npm run migrate
 cd ../../
