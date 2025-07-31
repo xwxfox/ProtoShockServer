@@ -37,6 +37,10 @@ EXPOSE 3000 8880
 # Make sure the entrypoint script is executable
 RUN chmod +x ./entrypoint.sh
 
+RUN touch /app/packages/socket/.env.production \
+    && touch /app/packages/web/.env.production \
+    && touch /app/packages/database/.env.production
+    
 # its go time
 ENTRYPOINT ["/app/entrypoint.sh"]
 
