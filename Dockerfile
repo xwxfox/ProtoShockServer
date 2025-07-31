@@ -31,8 +31,8 @@ RUN npm run migrate
 WORKDIR /app
 
 # Create empty env files
-RUN touch /app/packages/socket/.env.production \
-    && touch /app/packages/web/.env.production \
+RUN touch /app/apps/socket/.env.production \
+    && touch /app/apps/web/.env.production \
     && touch /app/packages/database/.env.production \
     && touch /app/shared/magic.db
     
