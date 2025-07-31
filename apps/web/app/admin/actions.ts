@@ -5,10 +5,7 @@ import { ProtoDBClass, users } from '@protoshock/database'; // adjust import to 
 import { eq } from 'drizzle-orm';
 import { SignJWT, jwtVerify } from 'jose';
 import { createHash } from 'node:crypto';
-import { config } from 'dotenv'
-config({
-    path: process.cwd() + "./" + (process.env.NODE_ENV === 'production' ? '.env.production' : '.env.development')
-})
+import '../lib/envConfig'
 const SESSION_SECRET = process.env.SESSION_SECRET!;
 
 export async function loginAdmin(formData: FormData): Promise<{ success: boolean | null; error?: string }> {

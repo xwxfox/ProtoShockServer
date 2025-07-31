@@ -5,10 +5,7 @@ import { ChatMonitoringMessage } from '@/types/shared';
 import { useRouter } from 'next/navigation';
 import { useCallback, useState, useEffect } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { config } from 'dotenv'
-config({
-    path: process.cwd() + "./" + (process.env.NODE_ENV === 'production' ? '.env.production' : '.env.development')
-})
+import '../lib/envConfig'
 interface ServerStats {
     onlinePlayers: number;
     totalRooms: number;
