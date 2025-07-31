@@ -39,3 +39,4 @@ yarn-error.log*
 apps/socket/notes
 apps/socket/actions.log
 shared/
+package-lock.json
