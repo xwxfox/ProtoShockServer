@@ -5,7 +5,7 @@ import { ProtoDBClass, users } from '@protoshock/database'; // adjust import to 
 import { eq } from 'drizzle-orm';
 import { SignJWT, jwtVerify } from 'jose';
 import { createHash } from 'node:crypto';
-import '../lib/envConfig'
+import '../../lib/envConfig'
 const SESSION_SECRET = process.env.SESSION_SECRET!;
 
 export async function loginAdmin(formData: FormData): Promise<{ success: boolean | null; error?: string }> {

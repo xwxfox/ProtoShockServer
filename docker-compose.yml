@@ -15,7 +15,4 @@ services:
     # environment:
     #   - NODE_ENV=production
     volumes:
-      - ./.socket.production.env:/app/.socket.production.env
-      - ./.web.production.env:/app/.web.production.env
-      - ./.database.production.env:/app/.database.production.env
-      - ./shared/magic.db:/app/shared/_magic.db
+      - ./shared/magic.db:/app/shared/magic.db

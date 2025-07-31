@@ -5,7 +5,6 @@ import { ChatMonitoringMessage } from '@/types/shared';
 import { useRouter } from 'next/navigation';
 import { useCallback, useState, useEffect } from 'react';
 import { io, Socket } from 'socket.io-client';
-import '../lib/envConfig'
 interface ServerStats {
     onlinePlayers: number;
     totalRooms: number;

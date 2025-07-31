@@ -1,6 +1,9 @@
+ARG SOCKET_ENV_FILE_CONTENT
+ARG WEB_ENV_FILE_CONTENT
+ARG DATABASE_ENV_FILE_CONTENT
+
 FROM node:22-slim
 WORKDIR /app
-
 
 # Install necessary packages
 RUN apt-get update && apt-get install -y \
@@ -31,9 +34,9 @@ RUN npm run migrate
 WORKDIR /app
 
 # Create empty env files
-RUN touch /app/apps/socket/.env.production \
-    && touch /app/apps/web/.env.production \
-    && touch /app/packages/database/.env.production \
+RUN echo "$SOCKET_ENV_FILE_CONTENT" > /app/apps/socket/.env.production \
+    && echo "$WEB_ENV_FILE_CONTENT" > /app/apps/web/.env.production \
+    && echo "$DATABASE_ENV_FILE_CONTENT" > /app/packages/database/.env.production \
     && mkdir /app/shared \
     && touch /app/shared/magic.db
     

@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { io, Socket } from 'socket.io-client';
-import '../lib/envConfig'
 export default function Home() {
   const [isOnline, setIsOnline] = useState(false);
   const [location, setLocation] = useState<string>("owo");
