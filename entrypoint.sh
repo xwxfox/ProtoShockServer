@@ -14,7 +14,7 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 # Use associative arrays to track process info
 declare -A PIDS
 declare -A PGIDS
-
+cd ./packages/database && npm run migrate && cd "$SCRIPT_DIR"
 # --- Universal Cleanup Function ---
 cleanup() {
     # Disable the trap to prevent recursive calls during cleanup
