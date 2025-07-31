@@ -1,4 +1,4 @@
-FROM node:20-slim
+FROM node:22-slim
 WORKDIR /app
 
 # Copy source to the container
@@ -6,6 +6,9 @@ COPY . .
 
 # Make scripts executable.
 RUN chmod +x ./setup.sh ./entrypoint.sh
+
+# Update npm to the latest version
+RUN npm install -g npm@latest
 
 # Install necessary packages
 RUN apt-get update && apt-get install -y procps curl netcat-traditional
