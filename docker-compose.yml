@@ -3,9 +3,9 @@ services:
     # Tells Docker Compose to build the image from the Dockerfile in the current directory
     build: .
     args:
-      SOCKET_ENV_FILE_CONTENT: ${SOCKET_ENV_FILE_CONTENT}
-      WEB_ENV_FILE_CONTENT: ${WEB_ENV_FILE_CONTENT}
-      DATABASE_ENV_FILE_CONTENT: ${DATABASE_ENV_FILE_CONTENT}
+    - 'SOCKET_ENV_FILE_CONTENT=${SOCKET_ENV_FILE_CONTENT}'
+    - 'WEB_ENV_FILE_CONTENT=${WEB_ENV_FILE_CONTENT}'
+    - 'DATABASE_ENV_FILE_CONTENT=${DATABASE_ENV_FILE_CONTENT}'
     restart: no
     # The name of the container that will be created
     container_name: protoshock_server
