@@ -10,7 +10,6 @@ services:
     # Maps port 3000 on the host to port 3000 in the container
     # Change the host port (the first number) if it's already in use on your machine
     ports:
-      - "3000:3000"
       - "8880:8880"
     # You can define environment variables here if your application needs them
     # environment:
