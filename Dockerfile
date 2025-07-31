@@ -1,8 +1,8 @@
+FROM node:22-slim
 ARG SOCKET_ENV_FILE_CONTENT
 ARG WEB_ENV_FILE_CONTENT
 ARG DATABASE_ENV_FILE_CONTENT
 
-FROM node:22-slim
 WORKDIR /app
 
 # Install necessary packages
