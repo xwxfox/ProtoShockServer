@@ -25,6 +25,7 @@ RUN npm install drizzle-kit turbo
 WORKDIR /app/packages/database
 RUN npm run migrate
 
+WORKDIR /app
 # Build with turborepo owo
 RUN npm run build
 
