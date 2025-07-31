@@ -1,7 +1,7 @@
 services:
   protoshock_server:
     # Tells Docker Compose to build the image from the Dockerfile in the current directory
-    build: .
+    build:
       context: .
       args:
         SOCKET_ENV_FILE_CONTENT: ${SOCKET_ENV_FILE_CONTENT}
