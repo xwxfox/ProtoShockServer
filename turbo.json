@@ -8,6 +8,7 @@
   "tasks": {
     "build": {
       "dependsOn": [
+        "buildPackages",
         "^build"
       ],
       "inputs": [
