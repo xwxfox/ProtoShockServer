@@ -19,5 +19,3 @@ services:
     # You can define environment variables here if your application needs them
     # environment:
     #   - NODE_ENV=production
-    volumes:
-      - ./shared/magic.db:/app/shared/magic.db
