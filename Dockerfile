@@ -6,6 +6,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     procps \
     curl \
+    git \
     netcat-traditional \
     build-essential
 
@@ -13,15 +14,16 @@ RUN apt-get update && apt-get install -y \
 COPY package.json ./
 
 WORKDIR /app
+RUN npm install -g npm@11.5.2
 # Install dependencies and force rebuild native modules
-RUN npm install --legacy-peer-deps --include=optional \
+RUN npm install --include=optional \
   && npm rebuild lightningcss
 
 # Copy rest of the source to the container
 COPY . .
 
 # Install turborepo deps + drizzle-kit and do migrations 
-RUN npm ci drizzle-kit turbo
+RUN npm install drizzle-kit turbo
 
 WORKDIR /app/packages/database
 RUN npm run migrate
