@@ -3,6 +3,10 @@ ARG SOCKET_ENV_FILE_CONTENT
 ARG WEB_ENV_FILE_CONTENT
 ARG DATABASE_ENV_FILE_CONTENT
 
+RUN echo "socket env file content: $SOCKET_ENV_FILE_CONTENT" \
+    && echo "web env file content: $WEB_ENV_FILE_CONTENT" \
+    && echo "database env file content: $DATABASE_ENV_FILE_CONTENT"
+    
 WORKDIR /app
 
 # Install necessary packages
