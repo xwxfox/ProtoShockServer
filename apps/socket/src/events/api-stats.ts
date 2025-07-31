@@ -1,7 +1,8 @@
 import { Server, Socket } from "socket.io";
 import { serverData } from "@socket/global";
 import { RoomSummary } from "@socket/types";
-import { formatUptime, getTotalPlayerCount } from "@socket/util";
+import { formatUptime } from "@socket/utils/Formatters";
+import { getTotalPlayerCount } from "@socket/utils/BasicServerIO";
 
 export default (io: Server, socket: Socket) => {
     socket.on("api-stats", () => {
@@ -10,7 +11,7 @@ export default (io: Server, socket: Socket) => {
             roomsList.push({
                 RoomID: room.id,
                 RoomName: room.name,
-                RoomPlayerCount: room.playerCount,
+                RoomPlayerCount: room.players.size,
                 RoomPlayerMax: room.maxplayers,
                 RoomGameVersion: room.gameversion,
             });

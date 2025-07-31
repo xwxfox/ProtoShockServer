@@ -11,7 +11,10 @@ node_modules
 .env.development.local
 .env.test.local
 .env.production.local
+.env.development
+.env.production
 
+shared/
 # Testing
 coverage
 
@@ -38,4 +41,9 @@ yarn-error.log*
 *.pem
 apps/socket/notes
 apps/socket/actions.log
+<<<<<<< HEAD
 shared/drizzle
+=======
+apps/socket/.env.development
+apps/socket/.env.production
+>>>>>>> 1de386b7c3cfd8d0b385038b6214d0958a137c41
