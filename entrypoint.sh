@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # script to run / manage every service in the protoshock server, also runs health checks etc to make sure everything works, and restarts services if not.
 # --- Configuration ---
 set -o pipefail # Fail a pipeline if any command fails.

@@ -4,6 +4,7 @@ rm -rf shared/drizzle/
 cd packages/database
 npm run migrate
 cd ../../
+npm install
 echo "You should be able to build and run the server now."
 echo "Try: npm run build <--- to build the server"
 echo "Then: npm run start <--- to start the server"

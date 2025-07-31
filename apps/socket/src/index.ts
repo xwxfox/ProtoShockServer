@@ -71,9 +71,7 @@ const io = new Server({
     addTrailingSlash: true,
     allowUpgrades: true,
     cors: {
-        origin: (_req, callback) => {
-            callback(null, true);
-        },
+        origin: "*",
         methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"],
         credentials: true,
         allowedHeaders: ["Content-Type", "Authorization"],
