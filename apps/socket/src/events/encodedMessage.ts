@@ -5,6 +5,7 @@ import { runAction } from "@socket/utils/MainServerActionHandler";
 import * as zlib from 'zlib';
 import { clientStates } from "@socket/global";
 import { createChatMessage } from "@socket/utils/RPCFactory";
+import { internal } from "@socket/utils/Logging";
 
 // Pre-compute CRC32 table for fast validation (prevents most corrupted buffers)
 const CRC32_TABLE = new Uint32Array(256);
@@ -14,14 +15,6 @@ for (let i = 0; i < 256; i++) {
         crc = (crc & 1) ? (0xEDB88320 ^ (crc >>> 1)) : (crc >>> 1);
     }
     CRC32_TABLE[i] = crc;
-}
-
-function fastCRC32(buffer: Buffer, start = 0, end = buffer.length): number {
-    let crc = 0xFFFFFFFF;
-    for (let i = start; i < end; i++) {
-        crc = CRC32_TABLE[(crc ^ buffer[i]) & 0xFF] ^ (crc >>> 8);
-    }
-    return (crc ^ 0xFFFFFFFF) >>> 0;
 }
 
 // Fast buffer validation that catches corruption before calling zlib
@@ -94,7 +87,7 @@ function validateBuffer(buffer: Buffer): { isValid: boolean; type: 'gzip' | 'def
     return { isValid: false, type: 'raw', reason: 'Not compressed data' };
 }
 
-// High-performance synchronous decompression with safety guards
+// Decompression with safety guards
 function safeSyncDecompress(buffer: Buffer): string | null {
     const validation = validateBuffer(buffer);
 
@@ -142,7 +135,7 @@ function safeSyncDecompress(buffer: Buffer): string | null {
     }
 }
 
-// Detect and handle zombie connections efficiently
+// Detect and handle zombie connections
 function isZombieConnection(socket: Socket): boolean {
     const clientState = clientStates.get(socket.id);
     if (!clientState) return false;
@@ -181,7 +174,7 @@ export default (io: Server, socket: Socket) => {
 
             // Check for zombie connection (fast check)
             if (isZombieConnection(socket)) {
-                console.log('[Zombie] Detected zombie connection, forcing disconnect:', socket.id);
+                internal.log('[Zombie] Detected zombie connection, forcing disconnect:', socket.id);
                 const errormessage = createChatMessage("[Error] Socket not connected. Please reconnect.", 'system', "Socket Error");
                 // Send error message to the client
                 sendCompressedMessage(socket, errormessage);
@@ -200,7 +193,7 @@ export default (io: Server, socket: Socket) => {
                 return;
             }
 
-            // Size check (very fast)
+            // Size check
             if (compressedMessage.length > 10 * 1024 * 1024) { // 10MB limit
                 console.error('[Message Error] Message too large:', compressedMessage.length, 'from', socket.id);
                 clientState.consecutiveErrors++;
@@ -208,7 +201,7 @@ export default (io: Server, socket: Socket) => {
                 return;
             }
 
-            // Fast decompression
+            // Decompression
             const decompressedMessage = safeSyncDecompress(compressedMessage);
 
             if (!decompressedMessage) {
@@ -228,7 +221,7 @@ export default (io: Server, socket: Socket) => {
             const endTime = process.hrtime.bigint();
             const durationMs = Number(endTime - startTime) / 1000000;
             if (durationMs > 10) { // Only log if it took more than 10ms
-                console.log(`[Performance] Message processing took ${durationMs.toFixed(2)}ms for ${socket.id}`);
+                internal.debug(`[Performance] Message processing took ${durationMs.toFixed(2)}ms for ${socket.id}`);
             }
 
         } catch (overallErr: any) {
@@ -240,7 +233,7 @@ export default (io: Server, socket: Socket) => {
 
                 // Disconnect clients with too many errors
                 if (clientState.consecutiveErrors > 5) {
-                    console.log('[Error Threshold] Disconnecting problematic client:', socket.id);
+                    internal.log('[Error Threshold] Disconnecting problematic client:', socket.id);
                     socket.disconnect(true);
                     clientStates.delete(socket.id);
                 }
@@ -251,16 +244,16 @@ export default (io: Server, socket: Socket) => {
 
 async function processMessage(decompressedMessage: string, socket: Socket) {
     try {
-        // Fast input validation
+        // input validation
         if (!decompressedMessage || typeof decompressedMessage !== 'string') {
             return;
         }
 
-        // Efficient message splitting and filtering
+        // Message splitting and filtering
         const messageList = decompressedMessage.split('\n');
         const filteredMessageList: string[] = [];
 
-        // Pre-filter messages efficiently
+        // Pre-filter messages
         for (let i = 0; i < messageList.length; i++) {
             const msg = messageList[i];
             if (msg && msg.trim() !== '') {
@@ -272,7 +265,7 @@ async function processMessage(decompressedMessage: string, socket: Socket) {
             return;
         }
 
-        // Process messages efficiently
+        // Process messages
         for (let i = 0; i < filteredMessageList.length; i++) {
             const element = filteredMessageList[i];
 
@@ -290,7 +283,7 @@ async function processMessage(decompressedMessage: string, socket: Socket) {
                     runAction(socket, result.processedAction);
                 }
 
-                // Handle additional actions efficiently
+                // Handle additional actions
                 if (result?.additionalActions && result?.additionalActions?.length > 0) {
                     const delay = result.delay;
 

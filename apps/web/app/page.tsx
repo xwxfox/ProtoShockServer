@@ -40,6 +40,7 @@ export default function Home() {
       transports: ['websocket', 'polling']
     });
 
+    socket.emit('webClient', {});
 
     socket.on('disconnect', () => {
       setIsOnline(false);
@@ -63,15 +64,15 @@ export default function Home() {
             ProtoShock Server
           </h1>
           <p className="text-xl text-gray-300 max-w-2xl mx-auto">
-            beep boop beep boop
+            beep beeps with pew pews
           </p>
           <p className="text-xl text-gray-300 max-w-2xl mx-auto">
-            Server IP: <span className="font-bold">{location}:{process.env.NEXT_PUBLIC_APP_PORT}</span>
+            Server IP: <span className="font-bold">{location}{process.env.NEXT_PUBLIC_SHOW_PORT_IN_SERVER_IP === "true" ? ":" + process.env.NEXT_PUBLIC_APP_PORT : ''}</span>
             {/* Click to copy */}
             <button
               className="ml-2 text-blue-400 hover:text-blue-300 cursor-pointer"
               onClick={() => {
-                navigator.clipboard.writeText(location + ":" + process.env.NEXT_PUBLIC_APP_PORT);
+                navigator.clipboard.writeText(`${location}${process.env.NEXT_PUBLIC_SHOW_PORT_IN_SERVER_IP === "true" ? ":" + process.env.NEXT_PUBLIC_APP_PORT : ''}`);
               }}
             >
               Copy IP
@@ -124,7 +125,7 @@ export default function Home() {
 
         {/* Footer */}
         <div className="mt-16 text-center text-gray-400">
-          <p>Built with Next.js, TypeScript, and TailwindCSS</p>
+          <p>Built with ❤️ by the Sex Team</p>
         </div>
       </div>
     </div>

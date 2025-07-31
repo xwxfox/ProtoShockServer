@@ -1,6 +1,6 @@
 import { Server, Socket } from "socket.io";
 import { databaseHandler, serverData } from "@socket/global";
-import { SendMessage } from "@socket/util";
+import { SendMessage } from "@socket/utils/CompressedServerIO";
 
 export default (io: Server, socket: Socket) => {
     socket.on("adminCommand", async (data) => {

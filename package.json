@@ -1,7 +1,8 @@
 {
   "private": true,
   "scripts": {
-    "build": "turbo run build --force",
+    "build": "turbo run build",
+    "build:f": "turbo run build --force",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "start": "./entrypoint.sh",

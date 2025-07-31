@@ -1,7 +1,7 @@
 import { Server, Socket } from "socket.io";
 import { serverData, webclients } from "@socket/global";
 import { createGzip } from "zlib";
-import { ChatMonitoringMessage } from "@socket/handlers/MiddlewareHandlers/chatMonitoringHandler";
+import { ChatMonitoringMessage } from "@socket/types/Basics";
 
 export default (io: Server, socket: Socket) => {
     // Handle admin chat messages

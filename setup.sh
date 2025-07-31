@@ -1,5 +1,5 @@
 # fuck you i cant be bothered to write anything cool
-npm install drizzle-orm turbno
+npm install drizzle-kit turbo
 cd packages/database
 npm run migrate
 cd ../../

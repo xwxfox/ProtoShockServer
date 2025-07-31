@@ -18,6 +18,8 @@ import { internal } from "@socket/utils/Logging";
 import { startInactivityChecker, updateLastEventTimestamp } from "@socket/utils/inactivity";
 import { checkRoomValidity, getWebClientData } from "@socket/utils/BasicServerIO";
 import { scheduleGc } from "@socket/utils/ServerScheduler";
+import { PluginRegistry } from "@socket/utils/PluginRegistry";
+
 
 console.log("[Server] Starting Socket Server...");
 if (global.gc) {
@@ -29,6 +31,27 @@ else {
 
 // Set the process title for easier identification
 process.title = "ProtoShock Socket Server";
+// Load plugins
+await PluginRegistry.loadPlugins();
+console.log("[Server] Loaded plugins:", PluginRegistry.getPluginList().map(plugin => plugin.name + " (v" + plugin.version + ")").join(", "));
+
+// Register plugin handlers
+console.log("[Server] Registering plugin handlers...");
+await Promise.all(PluginRegistry.getPluginClassList().map(async (plugin) => {
+    const instance = new plugin();
+    if (instance.registerHandlers) {
+        PluginRegistry.pluginLog(instance.PluginInfo.name, `Registering handlers for plugin: ${instance.PluginInfo.id}`);
+        await instance.registerHandlers();
+    } else {
+        PluginRegistry.pluginLog(instance.PluginInfo.name, `Plugin ${instance.PluginInfo.id} does not have registerHandlers method.`);
+    }
+})
+).catch((error) => {
+    console.error("Error registering plugin handlers:", error);
+    throw error; // Re-throw to ensure server startup fails if plugins cannot be registered
+}).finally(() => {
+    console.log("[Server] All plugin handlers registered successfully.");
+});
 
 console.log(`[Server] Listening on port ${serverOptions.port}...`);
 console.log(`[Server] Debug mode is set to ${serverOptions.debugMode}.`);
@@ -107,7 +130,6 @@ setInterval(async () => {
 
 const onConnection = (socket: Socket) => {
     internal.log('[Connection] New client connected:', socket.id);
-
     // Initialize client state tracking
     clientStates.set(socket.id, {
         connectedAt: Date.now(),

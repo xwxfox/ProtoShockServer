@@ -1,15 +1,8 @@
-import { ActionHandler, RPCAction, ChatMessageRPC, ActionResult } from "@socket/types";
+import { ActionHandler, RPCAction, ChatMessageRPC, ActionResult, ChatMonitoringMessage } from "@socket/types";
 import { actionMiddleware } from "@socket/handlers/ActionMiddleware";
 import { serverData } from "@socket/global";
 import { cleanChatMessage } from "@socket/utils/Formatters";
-export interface ChatMonitoringMessage {
-    senderId: string;
-    message: string;
-    roomId: string | null; // Room ID or null if not in a room
-    roomName: string; // Optional room name for better readability
-    timestamp: number; // Unix timestamp
-    senderName: string;
-}
+
 // Chat filter handler - modifies chat messages
 export const chatMonitoringHandler: ActionHandler = (socket, action, context) => {
     if (action.action === 'rpc') {

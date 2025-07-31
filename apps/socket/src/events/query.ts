@@ -4,7 +4,7 @@ import { createGzip } from "zlib";
 import fs from "fs";
 import sharp from "sharp";
 import { serverOptions } from "@socket/constants";
-import { internal } from "@socket/util";
+import { internal } from "@socket/utils/Logging";
 
 export default (io: Server, socket: Socket) => {
     socket.on("query", () => {
