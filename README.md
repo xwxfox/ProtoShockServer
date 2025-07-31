@@ -3,7 +3,7 @@
 # @protoshock/socket
 Dedicated gameserver for ProtoShock
 
-Allthough this project is a complete rewrite parts and inspiration of this project came from the original ProtoShock/Server-Files (Created by Bracked & Gizzy).
+Allthough this project is a complete rewrite parts and inspiration of this project came from the original ProtoShock/Server-Files (Created by Bracket & Gizzy).
 
 Notable changes for the Socket Server compared to the original
 - Written in TypeScript
