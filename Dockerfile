@@ -21,7 +21,8 @@ RUN npm install --legacy-peer-deps --include=optional \
 COPY . .
 
 # Install turborepo deps + drizzle-kit and do migrations 
-RUN npm install drizzle-kit turbo
+RUN npm ci drizzle-kit turbo
+
 WORKDIR /app/packages/database
 RUN npm run migrate
 
