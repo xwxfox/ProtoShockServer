@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y \
     build-essential
 
 # Prevents cache issues with host node_modules
-COPY package.json package-lock.json* ./
+COPY package.json ./
 
 WORKDIR /app
 # Install dependencies and force rebuild native modules
