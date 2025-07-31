@@ -24,8 +24,15 @@ RUN apt-get update && apt-get install -y \
     g++ \
     && rm -rf /var/lib/apt/lists/*
 
-# Install turborepo deps + drizzle-kit and do migrations
-RUN ./setup.sh
+# Install turborepo deps + drizzle-kit and do migrations 
+RUN npm install drizzle-kit turbo
+WORKDIR /app/packages/database
+RUN npm run migrate
+
+WORKDIR /app
+# Install dependencies and force rebuild native modules
+RUN npm install --legacy-peer-deps --include=optional \
+  && npm rebuild lightningcss
 
 # Build with turborepo owo
 RUN npm run build
