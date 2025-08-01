@@ -1,6 +1,6 @@
 import { internal } from "@socket/utils/Logging";
 import { Server, Socket } from "socket.io";
-import { serverData } from "@socket/global";
+import { mainServer } from "@socket/global";
 
 // Map to track last event timestamp for each socket.id
 export const lastEventTimestamps: Map<string, number> = new Map();
@@ -18,14 +18,14 @@ export function startInactivityChecker(io: Server) {
     setInterval(() => {
         const now = Date.now();
         for (const [socketId, lastTime] of lastEventTimestamps.entries()) {
-            if (now - lastTime > 3000) { // 3 seconds
+            if (now - lastTime > 5000) { // 5 seconds
 
                 // dont disconnect web clients (sometimes game clients show up here so we disable this check for them)
                 // if (webclients.connectedWebClients.has(io.sockets.sockets.get(socketId)!)) return
-                internal.log(`[Server] Inactivity check: Socket ${socketId} inactive for more than 10 seconds.`);
+                internal.log(`[Server] Inactivity check: Socket ${socketId} inactive for more than 5 seconds.`);
 
                 try {
-                    serverData.removePlayerBySocketId(socketId);
+                    mainServer.removePlayerBySocketId(socketId);
                 } catch (error) {
                     console.error("[Error] Failed to remove player:", error);
                 }

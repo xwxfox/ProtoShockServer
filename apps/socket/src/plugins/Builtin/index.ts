@@ -29,6 +29,8 @@ export class ProtoShockBuiltIn implements PluginClass {
 
             // Specific action handlers
             actionMiddleware.registerHandler('createRoom', roomValidationHandler);
+            // send hello on room creation too
+            actionMiddleware.registerHandler('createRoom', welcomeHandler);
             actionMiddleware.registerHandler('joinRoom', welcomeHandler);
 
             // RPC handlers

@@ -1,16 +1,17 @@
 import { Socket } from "socket.io";
-import { serverData } from "@socket/global";
+import { mainServer } from "@socket/global";
 import { serverOptions } from "@socket/constants";
 import { RoomSummary } from "@socket/types/Basics";
 import { convertSecondsToUnits } from "@socket/utils/Formatters";
 import { SendMessage } from "@socket/utils/CompressedServerIO";
 import { WebClientData } from "@socket/types/WebClient";
+import { GetRoomListAction } from "@socket/types";
 
 export function getWebClientData(): WebClientData {
     const roomsList: RoomSummary[] = [];
     const playersList: any[] = [];
 
-    serverData.rooms.forEach((room) => {
+    mainServer.rooms.forEach((room) => {
         roomsList.push({
             RoomID: room.id,
             RoomName: room.name,
@@ -47,12 +48,12 @@ export function getWebClientData(): WebClientData {
 }
 
 export function checkRoomValidity() {
-    serverData.rooms.forEach((room, roomId) => {
+    mainServer.rooms.forEach((room, roomId) => {
         const invalidPlayers: string[] = [];
 
         room.players.forEach((player, playerId) => {
             // Get player info based on WebSocket
-            const playerBySocket = serverData.getPlayerBySocket(player.socket);
+            const playerBySocket = mainServer.getPlayerBySocket(player.socket);
             if (!playerBySocket || playerBySocket.id !== player.id) {
                 invalidPlayers.push(playerId);
             }
@@ -66,23 +67,23 @@ export function checkRoomValidity() {
         });
 
         if (room.players.size <= 0) {
-            serverData.rooms.delete(roomId);
+            mainServer.rooms.delete(roomId);
         }
     });
 }
 
 export function getTotalPlayerCount() {
     let totalPlayerCount = 0;
-    serverData.rooms.forEach((room) => {
+    mainServer.rooms.forEach((room) => {
         totalPlayerCount += room.players.size;
     });
     return totalPlayerCount;
 }
 
 export function broadcastRoomInfo() {
-    serverData.players.forEach((player) => {
+    mainServer.players.forEach((player) => {
         if (player == null) return;
-        const room = serverData.rooms.get(player.roomId);
+        const room = mainServer.rooms.get(player.roomId);
         if (!room) return;
         const playerIds = Array.from(room.players.keys()).map((id) => ({
             playerId: id,
@@ -95,16 +96,16 @@ export function broadcastRoomInfo() {
             scene: room.scene,
             scenepath: room.scenepath,
             gameversion: room.gameversion,
-            id: serverData.createId(),
+            id: mainServer.createId(),
         });
         SendMessage(player.socket, json);
     });
 }
 
 export function getCurrentPlayers(socket: Socket) {
-    const player = serverData.getPlayerBySocket(socket);
+    const player = mainServer.getPlayerBySocket(socket);
     if (player == null) return;
-    const room = serverData.rooms.get(player.roomId);
+    const room = mainServer.rooms.get(player.roomId);
     if (!room) return;
     const playerIds = Array.from(room.players.keys()).map((id) => ({
         playerId: id,
@@ -117,14 +118,14 @@ export function getCurrentPlayers(socket: Socket) {
         scene: room.scene,
         scenepath: room.scenepath,
         gameversion: room.gameversion,
-        id: serverData.createId(),
+        id: mainServer.createId(),
     });
     SendMessage(player.socket, json);
 }
 
-export function roomList(socket: Socket, /* amount: number, */ emptyonly: boolean = false) {
-    if (serverData.rooms.size < 0) return;
-    serverData.rooms.forEach((room) => {
+export function roomList(socket: Socket, query: GetRoomListAction) {
+    if (mainServer.rooms.size < 0) return;
+    mainServer.rooms.forEach((room) => {
         const _data = JSON.stringify({
             action: 'roomlist_roominfo',
             roomName: room.name,
@@ -132,6 +133,6 @@ export function roomList(socket: Socket, /* amount: number, */ emptyonly: boolea
             roomversion: room.gameversion,
             playercount: room.players.size,
         });
-        if (room.players.size < room.maxplayers || !emptyonly) return SendMessage(socket, _data);
+        if (room.players.size < room.maxplayers || !query.emptyonly) return SendMessage(socket, _data);
     });
 }

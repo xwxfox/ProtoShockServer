@@ -13,10 +13,11 @@ config({
 
 export const serverOptions = {
     port: parseInt(process.env.PORT || "8880", 10),
-    debugMode: parseInt(process.env.DEBUG_TYPE || "0", 10),
+    debugMode: Number(process.env.DEBUG_TYPE || "0"),
     serverIconFile: process.env.SERVER_ICON_FILE || "serverIcon.png",
     enableServerIcon: process.env.ENABLE_SERVER_ICON === "true",
     enableSocketAdminUI: process.env.ENABLE_SOCKET_ADMIN_UI === "true" || false,
     countryCode: process.env.COUNTRY_CODE || "UK",
     enableWebClient: process.env.ENABLE_WEB_CLIENT === "true" || true,
+    disableGracefulShutdown: process.env.DISABLE_GRACEFUL_SHUTDOWN === "true" || false,
 };

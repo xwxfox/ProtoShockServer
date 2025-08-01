@@ -1,6 +1,6 @@
 import { ActionHandler, RPCAction, ChatMessageRPC, ActionResult, ChatMonitoringMessage } from "@socket/types";
 import { actionMiddleware } from "@socket/handlers/ActionMiddleware";
-import { serverData } from "@socket/global";
+import { mainServer } from "@socket/global";
 import { cleanChatMessage } from "@socket/utils/Formatters";
 
 // Chat filter handler - modifies chat messages
@@ -10,7 +10,7 @@ export const chatMonitoringHandler: ActionHandler = (socket, action, context) =>
         const parsedRPC = actionMiddleware.parseRPC(rpcAction.rpc);
 
         if (parsedRPC && actionMiddleware.isRPCType<ChatMessageRPC>(parsedRPC, 'chatmessage')) {
-            const roomInfo = serverData.rooms.get(serverData.getPlayerBySocket(socket)?.roomId ?? '');
+            const roomInfo = mainServer.rooms.get(mainServer.getPlayerBySocket(socket)?.roomId ?? '');
             // this is a chat message
             socket.broadcast.emit("forwardedChatMessage", {
                 senderId: rpcAction.sender,
@@ -18,7 +18,7 @@ export const chatMonitoringHandler: ActionHandler = (socket, action, context) =>
                 roomId: roomInfo?.id || null,
                 roomName: roomInfo?.name || "Unknown",
                 timestamp: Date.now(),
-                senderName: serverData.players.get(rpcAction.sender)?.name || "Unknown"
+                senderName: mainServer.players.get(rpcAction.sender)?.name || "Unknown"
             } as ChatMonitoringMessage);
             return { result: ActionResult.PASS_THROUGH };
         }

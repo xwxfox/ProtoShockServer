@@ -1,6 +1,7 @@
 import { Socket } from "socket.io";
 import { messageQueue } from "@socket/global";
 import { createGzip } from "zlib";
+import { internal } from "./Logging";
 
 export function SendMessage(socket: Socket, data: any) {
     if (messageQueue.MessagesToSend.has(socket)) {
@@ -39,7 +40,7 @@ export async function sendBundledCompressedMessages() {
  * @param data JSON clientMessage event
  */
 export async function sendCompressedMessage(socket: Socket, data: any) {
-    console.log("[Debug] Sending compressed message:", data);
+    internal.debug("[Debug] Sending compressed message:", data);
     try {
         if (socket) {
             const gzip = createGzip();
@@ -47,7 +48,7 @@ export async function sendCompressedMessage(socket: Socket, data: any) {
             gzip.on('data', (chunk) => buffers.push(chunk));
             gzip.on('end', () => {
                 const compressedData = Buffer.concat(buffers);
-                console.log("[Debug] Compressed data size:", compressedData.length);
+                internal.debug("[Debug] Compressed data size:", compressedData.length);
 
                 socket.emit('clientmessage', compressedData);
             });

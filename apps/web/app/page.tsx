@@ -6,7 +6,7 @@ import { io, Socket } from 'socket.io-client';
 export default function Home() {
   const [isOnline, setIsOnline] = useState(false);
   const [location, setLocation] = useState<string>("owo");
-  const [serverData, setServerData] = useState({
+  const [mainServer, setServerData] = useState({
     playerCount: 0,
     roomsCount: 0,
     rooms: [],
@@ -88,25 +88,25 @@ export default function Home() {
             <div className="text-gray-300">Server Status</div>
           </div>
           <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-center">
-            <div className="text-3xl font-bold text-blue-400 mb-2">{serverData.playerCount}</div>
+            <div className="text-3xl font-bold text-blue-400 mb-2">{mainServer.playerCount}</div>
             <div className="text-gray-300">Online Players</div>
           </div>
           <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-center">
-            <div className="text-3xl font-bold text-purple-400 mb-2">{serverData.roomsCount}</div>
+            <div className="text-3xl font-bold text-purple-400 mb-2">{mainServer.roomsCount}</div>
             <div className="text-gray-300">Active Rooms</div>
           </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
           <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-center">
-            <div className="text-3xl font-bold text-yellow-400 mb-2">{serverData.uptime}</div>
+            <div className="text-3xl font-bold text-yellow-400 mb-2">{mainServer.uptime}</div>
             <div className="text-gray-300">Uptime</div>
           </div>
           <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-center">
-            <div className="text-3xl font-bold text-green-400 mb-2">{serverData.memoryUsage}</div>
+            <div className="text-3xl font-bold text-green-400 mb-2">{mainServer.memoryUsage}</div>
             <div className="text-gray-300">Memory Usage</div>
           </div>
           <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-center">
-            <div className="text-3xl font-bold text-pink-400 mb-2">{serverData.countryCode || 'N/A'}</div>
+            <div className="text-3xl font-bold text-pink-400 mb-2">{mainServer.countryCode || 'N/A'}</div>
             <div className="text-gray-300">Country Code</div>
           </div>
         </div>

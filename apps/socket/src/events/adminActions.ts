@@ -1,5 +1,5 @@
 import { Server, Socket } from "socket.io";
-import { serverData, webclients } from "@socket/global";
+import { mainServer, webclients } from "@socket/global";
 import { createGzip } from "zlib";
 import { ChatMonitoringMessage } from "@socket/types/Basics";
 
@@ -18,7 +18,7 @@ export default (io: Server, socket: Socket) => {
             action: 'rpc',
             rpc: JSON.stringify(chatRPC),
             sender: 'server',
-            id: serverData.createId()
+            id: mainServer.createId()
         };
 
         if (data.global || !data.roomId) {
@@ -38,7 +38,7 @@ export default (io: Server, socket: Socket) => {
             gzip.end(JSON.stringify(rpcAction));
         } else {
             // Send to specific room using message queue
-            const room = serverData.rooms.get(data.roomId);
+            const room = mainServer.rooms.get(data.roomId);
             if (room) {
                 room.players.forEach(player => {
                     const gzip = createGzip();
@@ -66,8 +66,8 @@ export default (io: Server, socket: Socket) => {
                 senderId: "0",
                 senderName: 'Admin',
                 message: data.message,
-                roomId: serverData.rooms.get(data.roomId || "")?.id || 'Global',
-                roomName: serverData.rooms.get(data.roomId || "")?.name || 'Global',
+                roomId: mainServer.rooms.get(data.roomId || "")?.id || 'Global',
+                roomName: mainServer.rooms.get(data.roomId || "")?.name || 'Global',
                 timestamp: Date.now(),
             }
             client.emit('forwardedChatMessage', messageData);
@@ -80,7 +80,7 @@ export default (io: Server, socket: Socket) => {
 
         // Find player across all rooms
         let playerFound = false;
-        serverData.rooms.forEach((room) => {
+        mainServer.rooms.forEach((room) => {
             room.players.forEach((player) => {
                 if (player.id === data.playerId) {
                     playerFound = true;

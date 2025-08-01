@@ -1,6 +1,6 @@
 import { ProtoDBClass } from '@protoshock/database';
 import { playerStats, serverStats, chatMessages, serverEvents, adminActions } from '@protoshock/database';
-import { serverData } from '@socket/global';
+import { mainServer } from '@socket/global';
 import { Player, Room } from '@socket/types';
 import { eq, gte, desc, asc } from 'drizzle-orm';
 
@@ -132,8 +132,8 @@ export class DatabaseHandler {
     async logServerStats() {
         try {
             const memoryUsage = Number((process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2));
-            const totalPlayers = serverData.getTotalPlayerCount();
-            const totalRooms = serverData.rooms.size;
+            const totalPlayers = mainServer.getTotalPlayerCount();
+            const totalRooms = mainServer.rooms.size;
             const uptime = Math.floor(process.uptime());
 
             await this.db.database.insert(serverStats).values({

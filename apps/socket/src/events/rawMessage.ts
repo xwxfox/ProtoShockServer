@@ -1,9 +1,8 @@
 import { Server, Socket } from "socket.io";
-import { handleAction } from "@socket/handlers/ActionHandler";
+import { evaluateMiddlewaresOnAction } from "@socket/handlers/ActionHandler";
 import { sendCompressedMessage } from "@socket/utils/CompressedServerIO";
-import { runAction } from "@socket/utils/MainServerActionHandler";
 import * as zlib from 'zlib';
-import { clientStates } from "@socket/global";
+import { clientStates, mainServer } from "@socket/global";
 import { createChatMessage } from "@socket/utils/RPCFactory";
 import { internal } from "@socket/utils/Logging";
 
@@ -161,7 +160,7 @@ export default (io: Server, socket: Socket) => {
     socket.on("message", async (compressedMessage) => {
         const clientState = clientStates.get(socket.id);
         if (!clientState) {
-            console.error('[Message Error] No client state for', socket.id);
+            internal.debug('[Message Error] No client state for', socket.id);
             return;
         }
 
@@ -186,7 +185,7 @@ export default (io: Server, socket: Socket) => {
                 return;
             }
 
-            // Fast input validation
+            // Input validation
             if (!compressedMessage || !Buffer.isBuffer(compressedMessage) || compressedMessage.length === 0) {
                 console.error('[Message Error] Invalid message from', socket.id);
                 clientState.consecutiveErrors++;
@@ -210,8 +209,8 @@ export default (io: Server, socket: Socket) => {
                 return;
             }
 
-            // Process the message
-            await processMessage(decompressedMessage, socket);
+            // Split, filter, and finally run middlewares & main server action
+            await handleIncomingMessages(decompressedMessage, socket);
 
             // Reset error count on success
             clientState.consecutiveErrors = 0;
@@ -242,7 +241,15 @@ export default (io: Server, socket: Socket) => {
     });
 };
 
-async function processMessage(decompressedMessage: string, socket: Socket) {
+/**
+ * Handles incoming messages after decompression.
+ * Validates input, splits messages, filters empty ones,
+ * evaluates middlewares, and runs main server actions.
+ * @param decompressedMessage The decompressed message string.
+ * @param socket The socket that sent the message.
+ * @returns {Promise<void>}
+ */
+async function handleIncomingMessages(decompressedMessage: string, socket: Socket): Promise<void> {
     try {
         // input validation
         if (!decompressedMessage || typeof decompressedMessage !== 'string') {
@@ -276,11 +283,13 @@ async function processMessage(decompressedMessage: string, socket: Socket) {
                     continue;
                 }
 
-                const result = await handleAction(socket, data);
+                // Evaluates / runs all the middlewares for the action
+                const result = await evaluateMiddlewaresOnAction(socket, data);
 
                 // Handle the main processed action
                 if (result?.processedAction) {
-                    runAction(socket, result.processedAction);
+                    // Run main server action after middlewares & then dispatch it to the client(s)
+                    mainServer.runServerAction(socket, result.processedAction);
                 }
 
                 // Handle additional actions
@@ -292,7 +301,8 @@ async function processMessage(decompressedMessage: string, socket: Socket) {
                         setTimeout(() => {
                             for (const action of result.additionalActions ?? []) {
                                 try {
-                                    runAction(socket, action);
+                                    // Run each additional action with the main server & dispatch it
+                                    mainServer.runServerAction(socket, action);
                                 } catch (err: any) {
                                     console.error('[Delayed Action Error]:', err.message);
                                 }
@@ -302,7 +312,8 @@ async function processMessage(decompressedMessage: string, socket: Socket) {
                         // Execute immediately
                         for (const action of result.additionalActions) {
                             try {
-                                runAction(socket, action);
+                                // Run each additional action with the main server & dispatch it
+                                mainServer.runServerAction(socket, action);
                             } catch (err: any) {
                                 console.error('[Action Error]:', err.message);
                             }

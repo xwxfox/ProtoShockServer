@@ -1,9 +1,9 @@
-import { ActionHandler, ActionResult } from "@socket/types";
+import { ActionHandler, ActionHandlerResponse, ActionResult } from "@socket/types";
 import { actionMiddleware } from "@socket/handlers/ActionMiddleware";
 
 // Welcome message handler - sends additional actions
-export const welcomeHandler: ActionHandler = (socket, action, context) => {
-    if (action.action === 'joinRoom') {
+export const welcomeHandler: ActionHandler = (socket, action, context): ActionHandlerResponse => {
+    if (action.action === 'joinRoom' || action.action === 'createRoom') {
         const welcomeMessage = actionMiddleware.createRPCAction(
             {
                 type: 'chatmessage',

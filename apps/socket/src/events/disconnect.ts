@@ -1,5 +1,5 @@
 import { Server, Socket } from "socket.io";
-import { webclients, serverData, clientStates } from "@socket/global";
+import { webclients, mainServer, clientStates } from "@socket/global";
 import { internal } from "@socket/utils/Logging";
 
 export default (io: Server, socket: Socket) => {
@@ -9,7 +9,7 @@ export default (io: Server, socket: Socket) => {
             webclients.connectedWebClients.delete(socket);
             internal.log("[Server] Web Client Removed", socket.id);
         } else {
-            serverData.removePlayer(socket);
+            mainServer.removePlayer(socket);
         }
         internal.log('[Connection] Client disconnected:', socket.id);
         if (clientStates.has(socket.id)) {

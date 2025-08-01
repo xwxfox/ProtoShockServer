@@ -1,5 +1,5 @@
 import { Server, Socket } from "socket.io";
-import { webclients, serverData } from "@socket/global";
+import { webclients, mainServer } from "@socket/global";
 import { serverOptions } from "@socket/constants";
 import { getWebClientData } from "@socket/utils/BasicServerIO";
 

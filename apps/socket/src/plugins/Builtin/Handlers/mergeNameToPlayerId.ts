@@ -1,6 +1,6 @@
 import { ActionHandler, RPCAction, ActionResult, SetPlayerNameRPC } from "@socket/types";
 import { actionMiddleware } from "@socket/handlers/ActionMiddleware";
-import { serverData } from "@socket/global";
+import { mainServer } from "@socket/global";
 import { internal } from "@socket/utils/Logging";
 import { sendCompressedMessage } from "@socket/utils/CompressedServerIO";
 
@@ -13,7 +13,7 @@ export const mergePlayerNameWithPlayerObjectHandler: ActionHandler = (socket, ac
 
             internal.log("NAME ADDED FOR PLAYER:", parsedRPC.name, "for player ID:", rpcAction.sender);
 
-            if (Array.from(serverData.players.values()).some(player => player.name === parsedRPC.name)) {
+            if (Array.from(mainServer.players.values()).some(player => player.name === parsedRPC.name)) {
                 internal.log("Player name already exists, Adding random chars to the name:", parsedRPC.name);
                 const newName = parsedRPC.name + Math.random().toString(36).substring(2, 5);
                 parsedRPC.name = newName;
@@ -24,10 +24,10 @@ export const mergePlayerNameWithPlayerObjectHandler: ActionHandler = (socket, ac
                 const newRPCAction: RPCAction = {
                     action: 'rpc',
                     rpc: JSON.stringify(nameChangeRPC),
-                    sender: serverData.getPlayerBySocket(socket)?.id || 'server',
-                    id: serverData.createId()
+                    sender: mainServer.getPlayerBySocket(socket)?.id || 'server',
+                    id: mainServer.createId()
                 };
-                serverData.players.get(rpcAction.sender)!.name = parsedRPC.name;
+                mainServer.players.get(rpcAction.sender)!.name = parsedRPC.name;
                 internal.log("New name set for player:", newName);
                 sendCompressedMessage(socket, newRPCAction).then(() => {
                     internal.log("Sent new name to player:", newName);
@@ -38,7 +38,7 @@ export const mergePlayerNameWithPlayerObjectHandler: ActionHandler = (socket, ac
             }
 
             try {
-                serverData.players.get(serverData.getPlayerBySocket(socket)?.id!)!.name = parsedRPC.name;
+                mainServer.players.get(mainServer.getPlayerBySocket(socket)?.id!)!.name = parsedRPC.name;
             } catch (error) {
                 console.error("Error merging player name:", error);
             }

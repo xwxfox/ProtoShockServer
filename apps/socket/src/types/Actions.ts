@@ -19,7 +19,7 @@ export interface CreateRoomAction extends BaseAction {
     action: 'createRoom';
     gameversion: string;
     roomName: string;
-    scene: number;
+    scene: string;
     maxplayers: number;
     scenepath: string;
 }
@@ -34,13 +34,18 @@ export interface GetCurrentPlayersAction extends BaseAction {
     action: 'getcurrentplayers';
 }
 
+export interface LeaveRoomAction extends BaseAction {
+    action: 'leave';
+}
+
 // Union types for type safety
 export type Action =
     | GetRoomListAction
     | CreateRoomAction
     | JoinRoomAction
     | GetCurrentPlayersAction
-    | RPCAction;
+    | RPCAction
+    | LeaveRoomAction;
 
 
 // Action handling results
@@ -72,4 +77,10 @@ export interface ActionContext {
     room?: Room;
     timestamp: number;
     metadata?: Record<string, any>;
+}
+
+export interface EvaluateMiddlewaresOnActionResult {
+    processedAction: Action | null;
+    additionalActions?: Action[];
+    delay?: number;
 }

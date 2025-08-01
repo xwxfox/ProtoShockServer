@@ -2,13 +2,12 @@ import { Server, Socket } from "socket.io";
 import { App } from "uWebSockets.js";
 import { instrument } from "@socket.io/admin-ui";
 import death from 'death'
-const DEATH_HANDLER = death({ uncaughtException: true })
 
 import registerPingHandler from "@socket/events/ping";
 import registerDisconnectHandler from "@socket/events/disconnect";
 import registerWebClientHandler from "@socket/events/webClient";
 import registerQueryHandler from "@socket/events/query";
-import registerMessageHandler from "@socket/events/encodedMessage";
+import registerMessageHandler from "@socket/events/rawMessage";
 import registerApiStatsHandler from "@socket/events/api-stats";
 import registerAdminActionsHandler from "@socket/events/adminActions";
 import { registerAPIHandler } from "@socket/handlers/RestAPIHandler";
@@ -59,15 +58,10 @@ console.log(serverOptions)
 
 const uws = App();
 const io = new Server({
-    /*
-    //Will be added in the future
-    // but either requires extensive rework of how we handle bundled messages with zlib
-    // or modifying the game code.
     connectionStateRecovery: {
         maxDisconnectionDuration: 2 * 60 * 1000,
         skipMiddlewares: true,
     },
-    */
     addTrailingSlash: true,
     allowUpgrades: true,
     cors: {
@@ -97,7 +91,7 @@ if (serverOptions.enableSocketAdminUI) {
 }
 
 io.attachApp(uws);
-setInterval(checkRoomValidity, 10000);
+setInterval(checkRoomValidity, 8000);
 
 // Inactivity checker for game client sockets - This is needed for handling clients that are technically disconnected but didnt fire the leave event
 startInactivityChecker(io);
@@ -179,14 +173,12 @@ uws.listen(serverOptions.port, () => {
     console.log(`[Server] HTTP Server listening on port ${serverOptions.port}`);
 });
 
-DEATH_HANDLER((signal) => {
-    gracefulShutdown(signal as NodeJS.Signals);
-});
-
-process.on("SIGABRT", (signal) => {
-    console.log("[Server] Received SIGABRT signal.");
-    gracefulShutdown(signal);
-});
+if (!serverOptions.disableGracefulShutdown) {
+    const DEATH_HANDLER = death({ uncaughtException: true })
+    DEATH_HANDLER((signal) => {
+        gracefulShutdown(signal as NodeJS.Signals);
+    });
+}
 
 export async function gracefulShutdown(signal: NodeJS.Signals) {
     const socketsToDisconnect = new Map<string, Socket>();
@@ -194,10 +186,10 @@ export async function gracefulShutdown(signal: NodeJS.Signals) {
 
     // Disconnect all clients
     console.log("[Server] Disconnecting all clients...");
+    console.log("[Server] Sending shutdown message to all clients...");
     for (const [socketId] of clientStates) {
         const socket = io.sockets.sockets.get(socketId);
         if (socket && socket.connected) {
-            console.log("[Server] Sending shutdown message to all clients...");
             socket.emit('adminChat', {
                 message: "[Server] Game server shutting down - Please reconnect from main menu.",
                 roomId: undefined,

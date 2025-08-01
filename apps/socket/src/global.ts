@@ -1,4 +1,4 @@
-import { ServerState } from '@socket/handlers/ServerState';
+import { MainServerClass } from '@socket/handlers/MainServerClass';
 import { MessageQueue } from '@socket/handlers/MessageQueue';
 import { databaseHandler } from '@socket/handlers/DatabaseHandler';
 import { Socket } from 'socket.io';
@@ -6,7 +6,7 @@ import { Socket } from 'socket.io';
 export class WebClient {
     connectedWebClients: Map<Socket, Socket> = new Map();
 }
-export const serverData = new ServerState();
+export const mainServer = new MainServerClass();
 export const webclients = new WebClient();
 export const messageQueue = new MessageQueue();
 export const clientStates = new Map<string, {

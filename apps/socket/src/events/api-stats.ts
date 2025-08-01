@@ -1,5 +1,5 @@
 import { Server, Socket } from "socket.io";
-import { serverData } from "@socket/global";
+import { mainServer } from "@socket/global";
 import { RoomSummary } from "@socket/types";
 import { formatUptime } from "@socket/utils/Formatters";
 import { getTotalPlayerCount } from "@socket/utils/BasicServerIO";
@@ -7,7 +7,7 @@ import { getTotalPlayerCount } from "@socket/utils/BasicServerIO";
 export default (io: Server, socket: Socket) => {
     socket.on("api-stats", () => {
         const roomsList: RoomSummary[] = [];
-        serverData.rooms.forEach((room) => {
+        mainServer.rooms.forEach((room) => {
             roomsList.push({
                 RoomID: room.id,
                 RoomName: room.name,
@@ -23,7 +23,7 @@ export default (io: Server, socket: Socket) => {
             countryCode: process.env.countryCode,
             uptime: formatUptime(Math.round(process.uptime())),
             rooms: roomsList || "",
-            roomsCount: serverData.rooms.size || 0
+            roomsCount: mainServer.rooms.size || 0
         })
     });
 }

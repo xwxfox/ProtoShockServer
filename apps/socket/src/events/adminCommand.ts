@@ -1,5 +1,5 @@
 import { Server, Socket } from "socket.io";
-import { databaseHandler, serverData } from "@socket/global";
+import { databaseHandler, mainServer } from "@socket/global";
 import { SendMessage } from "@socket/utils/CompressedServerIO";
 
 export default (io: Server, socket: Socket) => {
@@ -10,7 +10,7 @@ export default (io: Server, socket: Socket) => {
             switch (command) {
                 case 'kickPlayer':
                     if (targetId) {
-                        const player = serverData.players.get(targetId);
+                        const player = mainServer.players.get(targetId);
                         if (player) {
                             player.socket.disconnect();
                             await databaseHandler.logAdminAction(socket.id, 'kick_player', targetId, reason);
@@ -29,11 +29,11 @@ export default (io: Server, socket: Socket) => {
                                 sender: 'SERVER'
                             }),
                             sender: 'SERVER',
-                            id: serverData.createId()
+                            id: mainServer.createId()
                         };
 
                         // Send to all players
-                        serverData.players.forEach((player) => {
+                        mainServer.players.forEach((player) => {
                             SendMessage(player.socket, JSON.stringify(globalMessage));
                         });
 
@@ -47,7 +47,7 @@ export default (io: Server, socket: Socket) => {
 
                 case 'sendRoomMessage':
                     if (message && targetId) {
-                        const room = serverData.rooms.get(targetId);
+                        const room = mainServer.rooms.get(targetId);
                         if (room) {
                             const roomMessage = {
                                 action: 'rpc',
@@ -57,7 +57,7 @@ export default (io: Server, socket: Socket) => {
                                     sender: 'SERVER'
                                 }),
                                 sender: 'SERVER',
-                                id: serverData.createId()
+                                id: mainServer.createId()
                             };
 
                             // Send to all players in room

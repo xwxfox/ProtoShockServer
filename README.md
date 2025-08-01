@@ -34,3 +34,8 @@ Notable changes compared to the original
 * in the root dir (here) run `npm run build` to build everything
 * and then run `npm run start` to start everything.
 * profit
+
+# Docker
+Docker kinda* works* but something is messing how we handle main exposed port -> socket server internally via next rewrites.
+
+Docker compose expects to get contents of each env file in args (this is because i mainly made it to use buildtime vars with coolify + im too lazy to fix it for now.)

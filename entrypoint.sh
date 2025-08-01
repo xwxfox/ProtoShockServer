@@ -15,6 +15,10 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 declare -A PIDS
 declare -A PGIDS
 
+if [ -d "$SCRIPT_DIR/shared/drizzle" ]; then
+    rm -rf "$SCRIPT_DIR/shared/drizzle"
+fi
+
 cd ./packages/database && npm run migrate && cd "$SCRIPT_DIR"
 
 # --- Universal Cleanup Function ---
