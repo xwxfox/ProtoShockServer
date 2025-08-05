@@ -11,6 +11,16 @@ import { getCurrentPlayers, roomList, broadcastRoomInfo } from "@socket/utils/Ba
 export class MainServerClass {
     players: Map<string, Player> = new Map();
     rooms: Map<string, Room> = new Map();
+    private static ServerVersion: string = "0.0.3-owo-2";
+    private static SupportedGameVersions: string[] = ["ALPHA-0.5.2", "OWO-0.6.0"];
+
+    get serverVersion(): string {
+        return MainServerClass.ServerVersion;
+    }
+
+    get supportedGameVersions(): string[] {
+        return MainServerClass.SupportedGameVersions;
+    }
 
     /**
      * Creates a unique ID for players and rooms.
@@ -379,4 +389,10 @@ export class MainServerClass {
         }
     }
 
+    getModInfo() {
+        return {
+            hasMods: false, // Placeholder for actual mod detection logic
+            mods: [] // Placeholder for actual mod list
+        };
+    }
 }
