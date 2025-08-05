@@ -12,11 +12,16 @@ config({
 });
 
 export const serverOptions = {
+    name: process.env.SERVER_NAME || "Protoshock Server",
+    version: process.env.SERVER_VERSION || "1.0.0",
+    description: process.env.SERVER_DESCRIPTION || "A Protoshock server.",
+    host: process.env.SERVER_HOST || "localhost",
     port: parseInt(process.env.PORT || "8880", 10),
+    maxPlayers: parseInt(process.env.MAX_PLAYERS || "32", 10),
     debugMode: Number(process.env.DEBUG_TYPE || "0"),
-    serverIconFile: process.env.SERVER_ICON_FILE || "serverIcon.png",
-    enableServerIcon: process.env.ENABLE_SERVER_ICON === "true",
-    enableSocketAdminUI: process.env.ENABLE_SOCKET_ADMIN_UI === "true" || false,
+    iconFile: process.env.SERVER_ICON_FILE || "serverIcon.png",
+    enableIcon: process.env.ENABLE_SERVER_ICON === "true",
+    enableAdminUI: process.env.ENABLE_SOCKET_ADMIN_UI === "true" || false,
     countryCode: process.env.COUNTRY_CODE || "UK",
     enableWebClient: process.env.ENABLE_WEB_CLIENT === "true" || true,
     disableGracefulShutdown: process.env.DISABLE_GRACEFUL_SHUTDOWN === "true" || false,

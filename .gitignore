@@ -40,3 +40,5 @@ apps/socket/notes
 apps/socket/actions.log
 shared/
 package-lock.json
+apps/socket/.env.development
+apps/socket/.env.production

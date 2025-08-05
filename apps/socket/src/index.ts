@@ -78,7 +78,7 @@ const io = new Server({
 // Register API handler for RESTful requests
 registerAPIHandler(uws);
 
-if (serverOptions.enableSocketAdminUI) {
+if (serverOptions.enableAdminUI) {
     instrument(io, {
         auth: {
             type: "basic",
