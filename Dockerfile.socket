@@ -8,10 +8,6 @@ ENV PATH=$PNPM_HOME:$PATH
 RUN corepack enable
 WORKDIR /app
 
-# Ensure DATABASE_PATH is set during build so drizzle outputs migrations to /app/shared/drizzle
-ENV DATABASE_PATH=/app/shared/magic.db
-
-# Install build deps for better-sqlite3 & sharp
 RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ ca-certificates && rm -rf /var/lib/apt/lists/*
 
 # Only copy root manifest workspace info first for faster caching
@@ -28,16 +24,14 @@ RUN npm install --include=dev
 # Copy sources
 COPY . .
 
-# Build only the database (needed for runtime types) and socket app
-# Generate migrations (drizzle) BEFORE building TS so models are available
-# Generate migrations. Use explicit DRIZZLE_OUT for deterministic path regardless of DATABASE_PATH availability.
-ENV DRIZZLE_OUT=shared/drizzle
+# Generate migrations for Postgres
+# We want the generated migrations to reside under /app/shared/drizzle/pg so that
+# the runtime image can COPY them from /app/shared/drizzle/pg. Because the migrate
+# script runs with working directory /app/packages/database, we need a relative
+# path that walks up to /app/shared/drizzle/pg.
+ENV DRIZZLE_OUT=../../shared/drizzle/pg
 RUN npm run migrate --workspace @protoshock/database || echo "[warn] migration generation failed (possibly already up-to-date)"
-RUN mkdir -p /app/shared/drizzle \
- && echo "[build] Ensured /app/shared/drizzle exists"
-# Build database & socket, then prune dev deps
-RUN npm run build --workspace @protoshock/database --workspace @protoshock/socket \
- && npm prune --omit=dev
+RUN npm run build --workspace @protoshock/database --workspace @protoshock/socket && npm prune --omit=dev
 
 FROM node:${NODE_VERSION}-slim AS runtime
 WORKDIR /app
@@ -50,76 +44,33 @@ COPY --from=base /app/packages/database/dist ./packages/database/dist
 # Copy repository shared migrations (present in repo root at shared/drizzle)
 # Copy generated migrations from database package
 # Copy generated migrations (drizzle places them under /app/shared/drizzle)
-COPY --from=base /app/shared/drizzle /app/shared-drizzle-src
+# Copy migrations
+COPY --from=base /app/shared/drizzle/pg /app/shared/drizzle/pg
+# Also keep a seed copy outside the shared volume mount so we can repopulate the first time the named volume is empty
+COPY --from=base /app/shared/drizzle/pg /app/drizzle-seed/pg
 # Copy package manifests to preserve ESM boundaries
 COPY --from=base /app/apps/socket/package.json ./apps/socket/package.json
 COPY --from=base /app/packages/database/package.json ./packages/database/package.json
-# Shared dir for sqlite will be mounted at /app/shared (volume).
-RUN mkdir -p /app/shared
-# Lightweight entrypoint to copy migrations into volume if missing
 COPY <<'EOF' /app/entrypoint.sh
 #!/usr/bin/env bash
 set -euo pipefail
-echo "[entrypoint] Starting container: $(hostname)"
-MIGRATION_OWNER="${MIGRATION_OWNER:-false}"
-DB_READY_SENTINEL="${DB_READY_SENTINEL:-/app/shared/.db_ready}"
+echo "[entrypoint] Starting socket server (Postgres)"
 
-seed_migrations() {
-	if [ -d /app/shared-drizzle-src ]; then
-		if [ ! -f /app/shared/drizzle/meta/_journal.json ]; then
-			echo "[entrypoint] Seeding migrations to shared volume";
-			rm -rf /app/shared/drizzle || true
-			cp -r /app/shared-drizzle-src /app/shared/drizzle;
-		else
-			echo "[entrypoint] Migrations already present (journal exists)";
-		fi
-	fi
-}
-
-init_db() {
-	echo "[entrypoint] Initializing / verifying database (owner=${MIGRATION_OWNER})";
-	if [ ! -f "${DATABASE_PATH}" ]; then
-		echo "[entrypoint] Database file not found. Creating new database.";
-	fi
-	node -e "import('./packages/database/dist/index.js').then(async m=>{const db=new m.ProtoDBClass();await db.init();}).catch(e=>{console.error(e);process.exit(1);})"
-}
-
-verify_db() {
-	if node --enable-source-maps packages/database/dist/utils/verifySchema.js; then
-		echo "[entrypoint] Schema verification succeeded.";
-		return 0
-	else
-		echo "[entrypoint] Schema verification failed.";
-		return 1
-	fi
-}
-
-if [ "${MIGRATION_OWNER}" = "true" ]; then
-	seed_migrations
-	init_db
-	if verify_db; then
-		echo "[entrypoint] Marking DB ready";
-		touch "${DB_READY_SENTINEL}"
-	else
-		echo "[entrypoint] Verification failed; not deleting DB automatically. Exiting with error to allow restart.";
-		exit 1
-	fi
-	exec "$@"
-else
-	echo "[entrypoint] Not migration owner; waiting for DB readiness sentinel or valid files...";
-	for i in $(seq 1 120); do
-		if [ -f "${DB_READY_SENTINEL}" ] || { [ -f "${DATABASE_PATH}" ] && [ -f /app/shared/drizzle/meta/_journal.json ]; }; then
-			echo "[entrypoint] Detected ready DB after $i seconds."; break; fi; sleep 1; done
-	if [ ! -f "${DATABASE_PATH}" ]; then
-		echo "[entrypoint] Timeout waiting for database; exiting."; exit 1; fi
-	seed_migrations # ensure migrations present locally if sentinel appeared before copy
-	if ! verify_db; then
-		echo "[entrypoint] Verification failed (non-owner). Exiting."; exit 1; fi
-	exec "$@"
+# If shared volume is empty (first run) seed migrations from baked image copy
+if [ ! -d /app/shared/drizzle/pg ] && [ -d /app/drizzle-seed/pg ]; then
+	echo "[entrypoint] Seeding migrations into shared volume..."
+	mkdir -p /app/shared/drizzle
+	cp -r /app/drizzle-seed/pg /app/shared/drizzle/
 fi
+
+until node -e "import('pg').then(async m=>{const c=new m.Client({connectionString: process.env.DATABASE_URL||'postgres://postgres:postgres@db:5432/protoshock'});await c.connect();await c.end();}).catch(e=>{console.error(e);process.exit(1);})"; do
+	echo "[entrypoint] Waiting for database..."; sleep 2;
+done
+node -e "import('./packages/database/dist/index.js').then(async m=>{const db=new m.ProtoDBClass();await db.init();}).catch(e=>{console.error(e);process.exit(1);})"
+# Create sentinel so other services know migrations done
+touch /app/shared/.migrations_ready || true
+exec node apps/socket/dist/index.js
 EOF
 RUN chmod +x /app/entrypoint.sh
-ENV DATABASE_PATH=/app/shared/magic.db
 EXPOSE 8880
 ENTRYPOINT ["/app/entrypoint.sh"]
-CMD ["node","apps/socket/dist/index.js"]

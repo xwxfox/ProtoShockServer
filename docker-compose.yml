@@ -1,5 +1,21 @@
 version: "3.9"
 services:
+  db:
+    image: postgres:16-alpine
+    container_name: protoshock-db
+    hostname: protoshock-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: protoshock
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
   socket:
     container_name: protoshock-socket
     hostname: protoshock-socket
@@ -14,7 +30,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 8880
-      DATABASE_PATH: /app/shared/magic.db
+      DATABASE_URL: postgres://postgres:postgres@db:5432/protoshock
       MIGRATION_OWNER: "true"
       DB_READY_SENTINEL: /app/shared/.db_ready
       SERVER_NAME: "ProtoShock Docker Socket"
@@ -52,7 +68,7 @@ services:
       NEXT_PUBLIC_SOCKET_SERVER_URL: http://socket
       NEXT_PUBLIC_SOCKET_SERVER_PORT: 8880
       NEXT_PUBLIC_APP_PORT: 3000
-      DATABASE_PATH: /app/shared/magic.db
+      DATABASE_URL: postgres://postgres:postgres@db:5432/protoshock
       MIGRATION_OWNER: "false"
       DB_READY_SENTINEL: /app/shared/.db_ready
     volumes:
@@ -61,6 +77,7 @@ services:
       - "3000:3000"
     depends_on:
       - socket
+      - db
     restart: unless-stopped
 
 volumes:

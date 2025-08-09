@@ -1,67 +1,67 @@
-import { sqliteTable, integer, text, real } from "drizzle-orm/sqlite-core"
+import { pgTable, serial, text, integer, real, boolean, bigint } from 'drizzle-orm/pg-core';
 
-export const playerStats = sqliteTable('PLAYER_STATS', {
-    id: integer().primaryKey().notNull(),
-    playerId: text().notNull(),
-    playerName: text(),
-    roomId: text().notNull(),
-    roomName: text(),
-    kills: integer().default(0),
-    deaths: integer().default(0),
-    damage: real().default(0),
-    health: real().default(100),
-    latency: integer().default(0),
-    joinTime: integer().notNull(), // Unix timestamp
-    leaveTime: integer(), // Unix timestamp
-    sessionDuration: integer().default(0), // in seconds
-    lastUpdated: integer().notNull(), // Unix timestamp
+export const playerStats = pgTable('player_stats', {
+    id: serial('id').primaryKey(),
+    playerId: text('player_id').notNull(),
+    playerName: text('player_name'),
+    roomId: text('room_id').notNull(),
+    roomName: text('room_name'),
+    kills: integer('kills').default(0),
+    deaths: integer('deaths').default(0),
+    damage: real('damage').default(0),
+    health: real('health').default(100),
+    latency: integer('latency').default(0),
+    joinTime: bigint('join_time', { mode: 'number' }).notNull(),
+    leaveTime: bigint('leave_time', { mode: 'number' }),
+    sessionDuration: integer('session_duration').default(0),
+    lastUpdated: bigint('last_updated', { mode: 'number' }).notNull(),
 });
 
-export const serverStats = sqliteTable('SERVER_STATS', {
-    id: integer().primaryKey().notNull(),
-    timestamp: integer().notNull(), // Unix timestamp
-    totalPlayers: integer().notNull(),
-    totalRooms: integer().notNull(),
-    memoryUsage: real().notNull(),
-    cpuUsage: real().default(0),
-    uptime: integer().notNull(),
+export const serverStats = pgTable('server_stats', {
+    id: serial('id').primaryKey(),
+    timestamp: bigint('timestamp', { mode: 'number' }).notNull(),
+    totalPlayers: integer('total_players').notNull(),
+    totalRooms: integer('total_rooms').notNull(),
+    memoryUsage: real('memory_usage').notNull(),
+    cpuUsage: real('cpu_usage').default(0),
+    uptime: integer('uptime').notNull(),
 });
 
-export const chatMessages = sqliteTable('CHAT_MESSAGES', {
-    id: integer().primaryKey().notNull(),
-    playerId: text().notNull(),
-    playerName: text(),
-    roomId: text().notNull(),
-    message: text().notNull(),
-    timestamp: integer().notNull(), // Unix timestamp
-    isAdminMessage: integer().default(0), // 0 = player, 1 = admin
+export const chatMessages = pgTable('chat_messages', {
+    id: serial('id').primaryKey(),
+    playerId: text('player_id').notNull(),
+    playerName: text('player_name'),
+    roomId: text('room_id').notNull(),
+    message: text('message').notNull(),
+    timestamp: bigint('timestamp', { mode: 'number' }).notNull(),
+    isAdminMessage: boolean('is_admin_message').default(false),
 });
 
-export const serverEvents = sqliteTable('SERVER_EVENTS', {
-    id: integer().primaryKey().notNull(),
-    eventType: text().notNull(), // 'player_join', 'player_leave', 'room_created', 'room_destroyed', 'admin_action'
-    playerId: text(),
-    roomId: text(),
-    eventData: text(), // JSON string for additional data
-    timestamp: integer().notNull(), // Unix timestamp
+export const serverEvents = pgTable('server_events', {
+    id: serial('id').primaryKey(),
+    eventType: text('event_type').notNull(),
+    playerId: text('player_id'),
+    roomId: text('room_id'),
+    eventData: text('event_data'),
+    timestamp: bigint('timestamp', { mode: 'number' }).notNull(),
 });
 
-export const adminActions = sqliteTable('ADMIN_ACTIONS', {
-    id: integer().primaryKey().notNull(),
-    adminId: text().notNull(),
-    action: text().notNull(), // 'kick_player', 'ban_player', 'send_message', 'shutdown_server'
-    targetId: text(), // player or room ID
-    reason: text(),
-    timestamp: integer().notNull(), // Unix timestamp
+export const adminActions = pgTable('admin_actions', {
+    id: serial('id').primaryKey(),
+    adminId: text('admin_id').notNull(),
+    action: text('action').notNull(),
+    targetId: text('target_id'),
+    reason: text('reason'),
+    timestamp: bigint('timestamp', { mode: 'number' }).notNull(),
 });
 
-export const bannedPlayers = sqliteTable('BANNED_PLAYERS', {
-    id: integer().primaryKey().notNull(),
-    playerId: text().notNull(),
-    playerName: text(),
-    bannedBy: text().notNull(),
-    reason: text(),
-    bannedAt: integer().notNull(), // Unix timestamp
-    expiresAt: integer(), // Unix timestamp, null for permanent
-    isActive: integer().default(1), // 0 = inactive, 1 = active
+export const bannedPlayers = pgTable('banned_players', {
+    id: serial('id').primaryKey(),
+    playerId: text('player_id').notNull(),
+    playerName: text('player_name'),
+    bannedBy: text('banned_by').notNull(),
+    reason: text('reason'),
+    bannedAt: bigint('banned_at', { mode: 'number' }).notNull(),
+    expiresAt: bigint('expires_at', { mode: 'number' }),
+    isActive: boolean('is_active').default(true),
 });

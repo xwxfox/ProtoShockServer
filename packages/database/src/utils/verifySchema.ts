@@ -1,29 +1,24 @@
-import fs from 'fs';
-import path from 'path';
-import { loadEnv } from './getEnv';
 import { ProtoDBClass } from '../index';
 
 export async function verifySchema() {
-    const env = loadEnv();
-    const dbPath = env.DATABASE_PATH;
-    console.log(`[verify-schema] Using database path: ${dbPath}`);
     const proto = new ProtoDBClass();
     await proto.init();
 
-    // Check required tables exist
+    // Expected table names in Postgres (lowercase as defined in pg-core schemas)
     const required = [
-        'SAVED_USERS',
-        'PLAYER_STATS',
-        'SERVER_STATS',
-        'CHAT_MESSAGES',
-        'SERVER_EVENTS',
-        'ADMIN_ACTIONS',
-        'BANNED_PLAYERS'
+        'saved_users',
+        'player_stats',
+        'server_stats',
+        'chat_messages',
+        'server_events',
+        'admin_actions',
+        'banned_players'
     ];
 
-    // better-sqlite3 pragma table_list
-    const rows = (proto as any).database.all?.("SELECT name FROM sqlite_master WHERE type='table'") || [];
-    const existing = new Set(rows.map((r: any) => r.name));
+    const result = await (proto as any).database.execute(
+        "SELECT table_name FROM information_schema.tables WHERE table_schema='public'"
+    );
+    const existing = new Set(result.rows ? result.rows.map((r: any) => r.table_name) : []);
     const missing = required.filter(t => !existing.has(t));
     if (missing.length) {
         console.error(`[verify-schema] Missing tables: ${missing.join(', ')}`);

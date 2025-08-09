@@ -19,12 +19,13 @@ export class DatabaseHandler {
 
     async logPlayerJoin(player: Player, room: Room) {
         try {
+            const nowSec = Math.floor(Date.now() / 1000);
             await this.db.database.insert(playerStats).values({
                 playerId: player.id,
                 roomId: player.roomId,
                 roomName: room.name,
-                joinTime: Date.now(),
-                lastUpdated: Date.now(),
+                joinTime: nowSec,
+                lastUpdated: nowSec,
             });
 
             await this.db.database.insert(serverEvents).values({
@@ -32,7 +33,7 @@ export class DatabaseHandler {
                 playerId: player.id,
                 roomId: player.roomId,
                 eventData: JSON.stringify({ hosting: player.hosting }),
-                timestamp: Date.now(),
+                timestamp: nowSec,
             });
         } catch (error) {
             console.error('[Database] Error logging player join:', error);
@@ -41,7 +42,7 @@ export class DatabaseHandler {
 
     async logPlayerLeave(player: Player) {
         try {
-            const now = Date.now();
+        const nowSec = Math.floor(Date.now() / 1000);
 
             // Update player stats with leave time
             const playerStatsRecord = await this.db.database
@@ -53,14 +54,16 @@ export class DatabaseHandler {
 
             if (playerStatsRecord.length > 0) {
                 const session = playerStatsRecord[0];
-                const sessionDuration = Math.floor((now - session.joinTime) / 1000);
+        // Support legacy ms-based rows: if joinTime looks like ms, convert on the fly
+        const joinTimeSec = session.joinTime > 2000000000 ? Math.floor(session.joinTime / 1000) : session.joinTime;
+        const sessionDuration = nowSec - joinTimeSec;
 
                 await this.db.database
                     .update(playerStats)
                     .set({
-                        leaveTime: now,
+            leaveTime: nowSec,
                         sessionDuration,
-                        lastUpdated: now,
+            lastUpdated: nowSec,
                     })
                     .where(eq(playerStats.id, session.id));
             }
@@ -69,7 +72,7 @@ export class DatabaseHandler {
                 eventType: 'player_leave',
                 playerId: player.id,
                 roomId: player.roomId,
-                timestamp: now,
+        timestamp: nowSec,
             });
         } catch (error) {
             console.error('[Database] Error logging player leave:', error);
@@ -94,7 +97,7 @@ export class DatabaseHandler {
 
             if (latestSession.length > 0) {
                 const updateData: any = {
-                    lastUpdated: Date.now(),
+                    lastUpdated: Math.floor(Date.now() / 1000),
                 };
 
                 if (playerName) updateData.playerName = playerName;
@@ -121,8 +124,8 @@ export class DatabaseHandler {
                 playerName,
                 roomId,
                 message,
-                timestamp: Date.now(),
-                isAdminMessage: isAdminMessage ? 1 : 0,
+                timestamp: Math.floor(Date.now() / 1000),
+                isAdminMessage
             });
         } catch (error) {
             console.error('[Database] Error logging chat message:', error);
@@ -135,9 +138,10 @@ export class DatabaseHandler {
             const totalPlayers = mainServer.getTotalPlayerCount();
             const totalRooms = mainServer.rooms.size;
             const uptime = Math.floor(process.uptime());
+            const nowSec = Math.floor(Date.now() / 1000);
 
             await this.db.database.insert(serverStats).values({
-                timestamp: Date.now(),
+                timestamp: nowSec,
                 totalPlayers,
                 totalRooms,
                 memoryUsage,
@@ -155,7 +159,7 @@ export class DatabaseHandler {
                 action,
                 targetId,
                 reason,
-                timestamp: Date.now(),
+                timestamp: Math.floor(Date.now() / 1000),
             });
         } catch (error) {
             console.error('[Database] Error logging admin action:', error);
@@ -199,7 +203,7 @@ export class DatabaseHandler {
 
     async getServerStatsHistory(hours = 24) {
         try {
-            const since = Date.now() - (hours * 60 * 60 * 1000);
+            const since = Math.floor(Date.now() / 1000) - (hours * 60 * 60);
             return await this.db.database
                 .select()
                 .from(serverStats)

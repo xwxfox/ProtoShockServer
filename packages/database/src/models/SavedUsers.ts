@@ -1,7 +1,7 @@
-import { sqliteTable, integer, text } from "drizzle-orm/sqlite-core"
+import { pgTable, serial, text } from 'drizzle-orm/pg-core';
 
-export const users = sqliteTable('SAVED_USERS', {
-  id: integer().primaryKey().notNull(),
-  username: text().notNull(),
-  hashedPassword: text().notNull(),
+export const users = pgTable('saved_users', {
+  id: serial('id').primaryKey(),
+  username: text('username').notNull(),
+  hashedPassword: text('hashed_password').notNull(),
 });

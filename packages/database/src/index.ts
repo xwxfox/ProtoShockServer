@@ -1,110 +1,81 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { loadEnv } from './utils/getEnv';
-import { BetterSQLite3Database, drizzle } from 'drizzle-orm/better-sqlite3';
-import Database from 'better-sqlite3';
-import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { Pool } from 'pg';
+import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { users } from './models/SavedUsers';
 import { playerStats, serverStats, chatMessages, serverEvents, adminActions, bannedPlayers } from './models/PlayerStats';
 import { createHash } from 'node:crypto';
-import os from 'os';
+
 export * from './models/SavedUsers';
 export * from './models/PlayerStats';
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const env = loadEnv();
+
+const DEFAULT_DB_URL = process.env.DATABASE_URL || 'postgres://postgres:postgres@db:5432/protoshock';
 
 export class ProtoDBClass {
-    private db: BetterSQLite3Database | undefined;
-    public get database(): BetterSQLite3Database {
-        if (!this.db) {
-            throw new Error('Database not initialized. Call init() first.');
-        }
+    private pool: any;
+    private db: ReturnType<typeof drizzle> | undefined;
+    public get database() {
+        if (!this.db) throw new Error('Database not initialized. Call init() first.');
         return this.db;
     }
 
     public async init() {
-        if (!fs.existsSync(env.DATABASE_PATH)) {
-            console.error(`Database file not found at ${env.DATABASE_PATH}`);
-            // We have to create the db and run the migrations.
-            this.db = await this.createNewDatabase();
+        this.pool = new Pool({ connectionString: DEFAULT_DB_URL });
+        this.db = drizzle(this.pool);
+        const isOwner = (process.env.MIGRATION_OWNER || 'true').toLowerCase() === 'true';
+        if (isOwner) {
+            const migrationsFolder = this.resolveMigrationsFolder();
+            await migrate(this.db, { migrationsFolder });
         } else {
-            console.log(`Database file found at ${env.DATABASE_PATH}`);
-            if (env.DESTRUCTIVE_CREATE_AND_OVERWRITE_DATABASE_ON_STARTUP !== 'true') {
-                this.db = await this.loadExistingDatabase();
-            } else {
-                console.warn('DESTRUCTIVE_CREATE_AND_OVERWRITE_DATABASE_ON_STARTUP is enabled. Existing database will be overwritten.');
-                // Delete the existing database file
-                fs.unlinkSync(env.DATABASE_PATH);
-                this.db = await this.createNewDatabase();
+            // Best-effort: only run migrations on owner container; if folder missing just log
+            try {
+                const migrationsFolder = this.resolveMigrationsFolder();
+                // If folder exists we still run them (harmless no-op) to keep schema in sync
+                await migrate(this.db, { migrationsFolder });
+            } catch (e) {
+                console.warn('[database] Skipping migrations (not owner and folder not found).');
             }
         }
-    }
-
-    private async createNewDatabase() {
-        if (!fs.existsSync(path.dirname(env.DATABASE_PATH))) {
-            fs.mkdirSync(path.dirname(env.DATABASE_PATH), { recursive: true });
-        }
-        const sqlite = new Database(process.env.DATABASE_PATH);
-        sqlite.pragma('journal_mode = WAL');
-        sqlite.pragma('foreign_keys = ON');
-
-        const db = drizzle({ client: sqlite });
-        // Determine migrations folder with multiple fallbacks
-        const candidates = [
-            path.join(path.dirname(env.DATABASE_PATH), 'drizzle'),                            // volume side-by-side
-            path.resolve(process.cwd(), 'shared/drizzle'),                                    // repo shared folder
-            path.resolve('/app/shared/drizzle'),                                              // container seeded location
-            path.resolve(__dirname, '../../drizzle')                                          // legacy packaged path
-        ];
-        const migrationsFolder = candidates.find(p => fs.existsSync(p)) || path.join(path.dirname(env.DATABASE_PATH), 'drizzle');
-        await migrate(db, { migrationsFolder });
-
-        console.log('Database created and migrations applied successfully.');
-        console.log("Adding admin user...");
-        await db.insert(users).values({
-            id: 0,
-            username: "admin",
-            hashedPassword: createHash('sha256').update(`paws-admin`).digest('hex')
-        })
-        return db;
-    }
-
-    private async loadExistingDatabase() {
-        const sqlite = new Database(process.env.DATABASE_PATH);
-        sqlite.pragma('journal_mode = WAL');
-        sqlite.pragma('foreign_keys = ON');
-
-        const db = drizzle({ client: sqlite });
-        // Always attempt to apply new migrations on existing database so schema stays current
         try {
-            const candidates = [
-                path.join(path.dirname(env.DATABASE_PATH), 'drizzle'),
-                path.resolve(process.cwd(), 'shared/drizzle'),
-                path.resolve('/app/shared/drizzle'),
-                path.resolve(__dirname, '../../drizzle')
-            ];
-            const migrationsFolder = candidates.find(p => fs.existsSync(p)) || path.join(path.dirname(env.DATABASE_PATH), 'drizzle');
-            if (fs.existsSync(migrationsFolder)) {
-                migrate(db, { migrationsFolder });
-            } else {
-                console.warn('[database] No migrations folder found for existing database; skipping migrate step.');
-            }
-        } catch (err) {
-            console.error('[database] Error running migrations on existing database:', err);
-            throw err;
+            await this.ensureAdminUser();
+        } catch (e) {
+            console.warn('[database] ensureAdminUser skipped (possibly before migrations):', (e as Error).message);
         }
-        console.log('Existing database loaded successfully.');
-        return db;
+    }
+
+    private resolveMigrationsFolder() {
+        const moduleDir = path.dirname(fileURLToPath(import.meta.url));
+        const candidates = [
+            path.resolve(process.cwd(), 'drizzle/pg'),
+            path.resolve('drizzle/pg'),
+            path.resolve(moduleDir, '../../drizzle/pg'),
+            // Support shared location used by Docker images (/app/shared/drizzle/pg)
+            path.resolve(process.cwd(), 'shared/drizzle/pg'),
+            path.resolve('shared/drizzle/pg'),
+            path.resolve(moduleDir, '../../shared/drizzle/pg')
+        ];
+        const found = candidates.find(p => fs.existsSync(p));
+        if (!found) throw new Error('[database] migrations folder not found (expected drizzle/pg). Run migrations generation.');
+        return found;
+    }
+
+    private async ensureAdminUser() {
+        const existing = await this.db!.select().from(users).limit(1);
+        if (!existing.length) {
+            await this.db!.insert(users).values({
+                username: 'admin',
+                hashedPassword: createHash('sha256').update('paws-admin').digest('hex')
+            });
+        }
     }
 }
 
+// Optional local test helper (not auto-run)
 async function testDatabase() {
     const protoDB = new ProtoDBClass();
     await protoDB.init();
-
-    console.log("Getting users for testing...");
     const usersList = await protoDB.database.select().from(users);
-    console.log("Users:", usersList);
+    console.log('Users:', usersList);
 }
