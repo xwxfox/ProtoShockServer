@@ -38,7 +38,6 @@ ENV NEXT_PUBLIC_SOCKET_SERVER_URL=${NEXT_PUBLIC_SOCKET_SERVER_URL} \
 # Generate migrations for database BEFORE building (uses TS source models) with explicit output path
 ENV DRIZZLE_OUT=shared/drizzle
 RUN npm run migrate --workspace @protoshock/database || echo "[warn] migration generation failed (maybe none needed)" \
- && if [ -d shared/drizzle ]; then mkdir -p packages/database/drizzle && cp -r shared/drizzle/* packages/database/drizzle/; fi \
  && mkdir -p /app/shared/drizzle \
  && echo "[build] Ensured /app/shared/drizzle exists" \
  && npm run build --workspace @protoshock/database --if-present \
@@ -53,7 +52,6 @@ COPY --from=base /app/apps/web/.next/standalone ./
 COPY --from=base /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=base /app/apps/web/public ./apps/web/public
 COPY --from=base /app/packages/database/dist ./packages/database/dist
-COPY --from=base /app/packages/database/drizzle ./packages/database/drizzle
 # Copy generated migrations from database package
 # Copy generated migrations (drizzle places them under /app/shared/drizzle)
 COPY --from=base /app/shared/drizzle /app/shared-drizzle-src

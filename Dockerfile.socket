@@ -32,8 +32,7 @@ COPY . .
 # Generate migrations (drizzle) BEFORE building TS so models are available
 # Generate migrations. Use explicit DRIZZLE_OUT for deterministic path regardless of DATABASE_PATH availability.
 ENV DRIZZLE_OUT=shared/drizzle
-RUN npm run migrate --workspace @protoshock/database || echo "[warn] migration generation failed (possibly already up-to-date)" \
- && if [ -d shared/drizzle ]; then mkdir -p packages/database/drizzle && cp -r shared/drizzle/* packages/database/drizzle/; fi
+RUN npm run migrate --workspace @protoshock/database || echo "[warn] migration generation failed (possibly already up-to-date)"
 RUN mkdir -p /app/shared/drizzle \
  && echo "[build] Ensured /app/shared/drizzle exists"
 # Build database & socket, then prune dev deps
@@ -48,7 +47,6 @@ COPY --from=base /app/node_modules ./node_modules
 COPY --from=base /app/apps/socket/dist ./apps/socket/dist
 COPY --from=base /app/apps/socket/serverIcon.png ./apps/socket/serverIcon.png
 COPY --from=base /app/packages/database/dist ./packages/database/dist
-COPY --from=base /app/packages/database/drizzle ./packages/database/drizzle
 # Copy repository shared migrations (present in repo root at shared/drizzle)
 # Copy generated migrations from database package
 # Copy generated migrations (drizzle places them under /app/shared/drizzle)
