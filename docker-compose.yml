@@ -16,6 +16,8 @@ services:
       NODE_ENV: production
       PORT: 8880
       DATABASE_PATH: /app/shared/magic.db
+  MIGRATION_OWNER: "true"
+  DB_READY_SENTINEL: /app/shared/.db_ready
       # Example additional envs; user can extend
       SERVER_NAME: "ProtoShock Docker Socket"
       ENABLE_SERVER_ICON: "true"
@@ -54,6 +56,8 @@ services:
       NEXT_PUBLIC_SOCKET_SERVER_PORT: 8880
       NEXT_PUBLIC_APP_PORT: 3000
       DATABASE_PATH: /app/shared/magic.db
+  MIGRATION_OWNER: "false"
+  DB_READY_SENTINEL: /app/shared/.db_ready
     volumes:
       - shared-data:/app/shared
     ports:

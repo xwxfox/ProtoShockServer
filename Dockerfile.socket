@@ -32,7 +32,8 @@ COPY . .
 # Generate migrations (drizzle) BEFORE building TS so models are available
 # Generate migrations. Use explicit DRIZZLE_OUT for deterministic path regardless of DATABASE_PATH availability.
 ENV DRIZZLE_OUT=shared/drizzle
-RUN npm run migrate --workspace @protoshock/database || echo "[warn] migration generation failed (possibly already up-to-date)"
+RUN npm run migrate --workspace @protoshock/database || echo "[warn] migration generation failed (possibly already up-to-date)" \
+ && if [ -d shared/drizzle ]; then mkdir -p packages/database/drizzle && cp -r shared/drizzle/* packages/database/drizzle/; fi
 RUN mkdir -p /app/shared/drizzle \
  && echo "[build] Ensured /app/shared/drizzle exists"
 # Build database & socket, then prune dev deps
@@ -47,6 +48,7 @@ COPY --from=base /app/node_modules ./node_modules
 COPY --from=base /app/apps/socket/dist ./apps/socket/dist
 COPY --from=base /app/apps/socket/serverIcon.png ./apps/socket/serverIcon.png
 COPY --from=base /app/packages/database/dist ./packages/database/dist
+COPY --from=base /app/packages/database/drizzle ./packages/database/drizzle
 # Copy repository shared migrations (present in repo root at shared/drizzle)
 # Copy generated migrations from database package
 # Copy generated migrations (drizzle places them under /app/shared/drizzle)
@@ -61,22 +63,62 @@ COPY <<'EOF' /app/entrypoint.sh
 #!/usr/bin/env bash
 set -euo pipefail
 echo "[entrypoint] Starting container: $(hostname)"
-if [ -d /app/shared-drizzle-src ] && [ ! -d /app/shared/drizzle ]; then
-	echo "[entrypoint] Seeding migrations to shared volume";
-	cp -r /app/shared-drizzle-src /app/shared/drizzle;
-fi
-if [ ! -f "${DATABASE_PATH}" ]; then
-	echo "[entrypoint] Database file not found. Initializing..."
-	node -e "import('./packages/database/dist/index.js').then(async m=>{const db=new m.ProtoDBClass();await db.init();}).catch(e=>{console.error(e);process.exit(1);})"
-else
-	echo "[entrypoint] Database file exists. Verifying schema..."
-	if ! node --enable-source-maps packages/database/dist/utils/verifySchema.js; then
-		echo "[entrypoint] Schema verification failed. Re-initializing database.";
-		rm -f "${DATABASE_PATH}";
-		node -e "import('./packages/database/dist/index.js').then(async m=>{const db=new m.ProtoDBClass();await db.init();}).catch(e=>{console.error(e);process.exit(1);})"
+MIGRATION_OWNER="${MIGRATION_OWNER:-false}"
+DB_READY_SENTINEL="${DB_READY_SENTINEL:-/app/shared/.db_ready}"
+
+seed_migrations() {
+	if [ -d /app/shared-drizzle-src ]; then
+		if [ ! -f /app/shared/drizzle/meta/_journal.json ]; then
+			echo "[entrypoint] Seeding migrations to shared volume";
+			rm -rf /app/shared/drizzle || true
+			cp -r /app/shared-drizzle-src /app/shared/drizzle;
+		else
+			echo "[entrypoint] Migrations already present (journal exists)";
+		fi
 	fi
+}
+
+init_db() {
+	echo "[entrypoint] Initializing / verifying database (owner=${MIGRATION_OWNER})";
+	if [ ! -f "${DATABASE_PATH}" ]; then
+		echo "[entrypoint] Database file not found. Creating new database.";
+	fi
+	node -e "import('./packages/database/dist/index.js').then(async m=>{const db=new m.ProtoDBClass();await db.init();}).catch(e=>{console.error(e);process.exit(1);})"
+}
+
+verify_db() {
+	if node --enable-source-maps packages/database/dist/utils/verifySchema.js; then
+		echo "[entrypoint] Schema verification succeeded.";
+		return 0
+	else
+		echo "[entrypoint] Schema verification failed.";
+		return 1
+	fi
+}
+
+if [ "${MIGRATION_OWNER}" = "true" ]; then
+	seed_migrations
+	init_db
+	if verify_db; then
+		echo "[entrypoint] Marking DB ready";
+		touch "${DB_READY_SENTINEL}"
+	else
+		echo "[entrypoint] Verification failed; not deleting DB automatically. Exiting with error to allow restart.";
+		exit 1
+	fi
+	exec "$@"
+else
+	echo "[entrypoint] Not migration owner; waiting for DB readiness sentinel or valid files...";
+	for i in $(seq 1 120); do
+		if [ -f "${DB_READY_SENTINEL}" ] || { [ -f "${DATABASE_PATH}" ] && [ -f /app/shared/drizzle/meta/_journal.json ]; }; then
+			echo "[entrypoint] Detected ready DB after $i seconds."; break; fi; sleep 1; done
+	if [ ! -f "${DATABASE_PATH}" ]; then
+		echo "[entrypoint] Timeout waiting for database; exiting."; exit 1; fi
+	seed_migrations # ensure migrations present locally if sentinel appeared before copy
+	if ! verify_db; then
+		echo "[entrypoint] Verification failed (non-owner). Exiting."; exit 1; fi
+	exec "$@"
 fi
-exec "$@"
 EOF
 RUN chmod +x /app/entrypoint.sh
 ENV DATABASE_PATH=/app/shared/magic.db

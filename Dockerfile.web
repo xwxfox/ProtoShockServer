@@ -38,6 +38,7 @@ ENV NEXT_PUBLIC_SOCKET_SERVER_URL=${NEXT_PUBLIC_SOCKET_SERVER_URL} \
 # Generate migrations for database BEFORE building (uses TS source models) with explicit output path
 ENV DRIZZLE_OUT=shared/drizzle
 RUN npm run migrate --workspace @protoshock/database || echo "[warn] migration generation failed (maybe none needed)" \
+ && if [ -d shared/drizzle ]; then mkdir -p packages/database/drizzle && cp -r shared/drizzle/* packages/database/drizzle/; fi \
  && mkdir -p /app/shared/drizzle \
  && echo "[build] Ensured /app/shared/drizzle exists" \
  && npm run build --workspace @protoshock/database --if-present \
@@ -52,6 +53,7 @@ COPY --from=base /app/apps/web/.next/standalone ./
 COPY --from=base /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=base /app/apps/web/public ./apps/web/public
 COPY --from=base /app/packages/database/dist ./packages/database/dist
+COPY --from=base /app/packages/database/drizzle ./packages/database/drizzle
 # Copy generated migrations from database package
 # Copy generated migrations (drizzle places them under /app/shared/drizzle)
 COPY --from=base /app/shared/drizzle /app/shared-drizzle-src
@@ -64,22 +66,42 @@ COPY <<'EOF' /app/entrypoint.sh
 #!/usr/bin/env bash
 set -euo pipefail
 echo "[entrypoint] Starting standalone Next.js server: $(hostname)"
-if [ -d /app/shared-drizzle-src ] && [ ! -d /app/shared/drizzle ]; then
-	echo "[entrypoint] Seeding migrations to shared volume";
-	cp -r /app/shared-drizzle-src /app/shared/drizzle;
-fi
-if [ ! -f "${DATABASE_PATH}" ]; then
-	echo "[entrypoint] Database file not found. Initializing..."
-	node -e "import('./packages/database/dist/index.js').then(async m=>{const db=new m.ProtoDBClass();await db.init();}).catch(e=>{console.error(e);process.exit(1);})"
-else
-	echo "[entrypoint] Database file exists. Verifying schema..."
-	if ! node --enable-source-maps packages/database/dist/utils/verifySchema.js; then
-		echo "[entrypoint] Schema verification failed. Re-initializing database.";
-		rm -f "${DATABASE_PATH}";
-		node -e "import('./packages/database/dist/index.js').then(async m=>{const db=new m.ProtoDBClass();await db.init();}).catch(e=>{console.error(e);process.exit(1);})"
+MIGRATION_OWNER="${MIGRATION_OWNER:-false}"
+DB_READY_SENTINEL="${DB_READY_SENTINEL:-/app/shared/.db_ready}"
+
+seed_migrations() {
+	if [ -d /app/shared-drizzle-src ]; then
+		if [ ! -f /app/shared/drizzle/meta/_journal.json ]; then
+			echo "[entrypoint] Seeding migrations to shared volume";
+			rm -rf /app/shared/drizzle || true
+			cp -r /app/shared-drizzle-src /app/shared/drizzle;
+		else
+			echo "[entrypoint] Migrations already present (journal exists)";
+		fi
 	fi
+}
+
+verify_db() {
+	if node --enable-source-maps packages/database/dist/utils/verifySchema.js; then
+		echo "[entrypoint] Schema verification succeeded."; return 0; else return 1; fi
+}
+
+if [ "${MIGRATION_OWNER}" = "true" ]; then
+	echo "[entrypoint] (web) Unexpectedly marked as migration owner; proceeding as owner.";
+	seed_migrations
+	node -e "import('./packages/database/dist/index.js').then(async m=>{const db=new m.ProtoDBClass();await db.init();}).catch(e=>{console.error(e);process.exit(1);})"
+	if verify_db; then touch "${DB_READY_SENTINEL}"; else exit 1; fi
+	exec node apps/web/server.js -p 3000
+else
+	echo "[entrypoint] Waiting for DB readiness sentinel or valid files...";
+	for i in $(seq 1 120); do
+		if [ -f "${DB_READY_SENTINEL}" ] || { [ -f "${DATABASE_PATH}" ] && [ -f /app/shared/drizzle/meta/_journal.json ]; }; then
+			echo "[entrypoint] Detected ready DB after $i seconds."; break; fi; sleep 1; done
+	if [ ! -f "${DATABASE_PATH}" ]; then echo "[entrypoint] Timeout waiting for database; exiting."; exit 1; fi
+	seed_migrations
+	if ! verify_db; then echo "[entrypoint] Verification failed (web). Exiting."; exit 1; fi
+	exec node apps/web/server.js -p 3000
 fi
-exec node apps/web/server.js -p 3000
 EOF
 RUN chmod +x /app/entrypoint.sh
 ENTRYPOINT ["/app/entrypoint.sh"]
