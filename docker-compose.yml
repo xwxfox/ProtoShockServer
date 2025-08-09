@@ -1,6 +1,9 @@
 version: "3.9"
+name: ProtoshockServer
 services:
   socket:
+    container_name: protoshock-socket
+    hostname: protoshock-socket
     build:
       context: .
       dockerfile: Dockerfile.socket
@@ -14,7 +17,15 @@ services:
       PORT: 8880
       DATABASE_PATH: /app/shared/magic.db
       # Example additional envs; user can extend
-      SERVER_NAME: ProtoShock Docker Socket
+      SERVER_NAME: "ProtoShock Docker Socket"
+      ENABLE_SERVER_ICON: "true"
+      SERVER_ICON_FILE: "serverIcon.png"
+      ENABLE_SOCKET_ADMIN_UI: "false"
+      COUNTRY_CODE: "DK"
+      ENABLE_WEB_CLIENT: "true"
+      DISABLE_GRACEFUL_SHUTDOWN: "false"
+      DEBUG_TYPE: "0"
+      SERVER_DESCRIPTION: "meow bruv"
     volumes:
       - shared-data:/app/shared
     ports:
@@ -23,6 +34,8 @@ services:
     restart: unless-stopped
 
   web:
+    container_name: protoshock-web
+    hostname: protoshock-web
     build:
       context: .
       dockerfile: Dockerfile.web
