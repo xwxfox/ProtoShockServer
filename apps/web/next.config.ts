@@ -7,12 +7,14 @@ const nextConfig: NextConfig = {
     eslint: {
         ignoreDuringBuilds: true, // Ignore ESLint errors during build
     },
+    output: 'standalone',
     async rewrites() {
+        const socketInternal = process.env.SOCKET_SERVER_INTERNAL_URL || 'http://socket:8880';
         return {
             beforeFiles: [
                 {
                     source: '/socket.io',
-                    destination: 'http://localhost:8880/socket.io/', // Proxy to Socket server
+                    destination: `${socketInternal}/socket.io/`,
                 },
             ]
         }

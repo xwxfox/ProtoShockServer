@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "c-dev": "tsx server.ts",
-    "build": "next build --turbopack",
+    "build": "next build",
     "dev": "next dev --turbopack",
     "start": "next start",
     "c-start": "NODE_ENV=production tsx server.ts",
@@ -16,7 +16,6 @@
     "@hookform/resolvers": "^5.2.0",
     "@next/env": "^15.4.5",
     "@protoshock/database": "*",
-    "@protoshock/ui": "*",
     "@radix-ui/react-dialog": "^1.1.14",
     "@radix-ui/react-label": "^2.1.7",
     "@radix-ui/react-scroll-area": "^1.2.9",
@@ -46,7 +45,6 @@
     "socket.io-client": "^4.8.1",
     "tailwind-merge": "^3.3.1",
     "tailwindcss": "^4.1.11",
-    "uWebSockets.js": "github:uNetworking/uWebSockets.js#v20.52.0",
     "zod": "^4.0.10"
   },
   "devDependencies": {

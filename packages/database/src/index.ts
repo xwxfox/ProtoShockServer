@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { loadEnv } from './utils/getEnv';
 import { BetterSQLite3Database, drizzle } from 'drizzle-orm/better-sqlite3';
 import Database from 'better-sqlite3';
@@ -10,6 +11,8 @@ import { createHash } from 'node:crypto';
 import os from 'os';
 export * from './models/SavedUsers';
 export * from './models/PlayerStats';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const env = loadEnv();
 
 export class ProtoDBClass {
@@ -48,14 +51,22 @@ export class ProtoDBClass {
         sqlite.pragma('foreign_keys = ON');
 
         const db = drizzle({ client: sqlite });
-        await migrate(db, { migrationsFolder: path.join(path.dirname(env.DATABASE_PATH), 'drizzle') });
+        // Determine migrations folder with multiple fallbacks
+        const candidates = [
+            path.join(path.dirname(env.DATABASE_PATH), 'drizzle'),                            // volume side-by-side
+            path.resolve(process.cwd(), 'shared/drizzle'),                                    // repo shared folder
+            path.resolve('/app/shared/drizzle'),                                              // container seeded location
+            path.resolve(__dirname, '../../drizzle')                                          // legacy packaged path
+        ];
+        const migrationsFolder = candidates.find(p => fs.existsSync(p)) || path.join(path.dirname(env.DATABASE_PATH), 'drizzle');
+        await migrate(db, { migrationsFolder });
 
         console.log('Database created and migrations applied successfully.');
         console.log("Adding admin user...");
         await db.insert(users).values({
             id: 0,
             username: "admin",
-            hashedPassword: createHash('sha256').update(`${os.hostname()}-admin`).digest('hex')
+            hashedPassword: createHash('sha256').update(`paws-admin`).digest('hex')
         })
         return db;
     }
@@ -66,6 +77,24 @@ export class ProtoDBClass {
         sqlite.pragma('foreign_keys = ON');
 
         const db = drizzle({ client: sqlite });
+        // Always attempt to apply new migrations on existing database so schema stays current
+        try {
+            const candidates = [
+                path.join(path.dirname(env.DATABASE_PATH), 'drizzle'),
+                path.resolve(process.cwd(), 'shared/drizzle'),
+                path.resolve('/app/shared/drizzle'),
+                path.resolve(__dirname, '../../drizzle')
+            ];
+            const migrationsFolder = candidates.find(p => fs.existsSync(p)) || path.join(path.dirname(env.DATABASE_PATH), 'drizzle');
+            if (fs.existsSync(migrationsFolder)) {
+                migrate(db, { migrationsFolder });
+            } else {
+                console.warn('[database] No migrations folder found for existing database; skipping migrate step.');
+            }
+        } catch (err) {
+            console.error('[database] Error running migrations on existing database:', err);
+            throw err;
+        }
         console.log('Existing database loaded successfully.');
         return db;
     }

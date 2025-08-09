@@ -25,6 +25,8 @@
         "@types/death": "^1.1.5",
         "death": "^1.1.0",
         "dotenv": "^17.2.1",
-        "socket.io": "^4.8.1"
+        "socket.io": "^4.8.1",
+        "uWebSockets.js": "https://github.com/uNetworking/uWebSockets.js/archive/refs/tags/v20.52.0.tar.gz",
+        "sharp": "^0.32.1"
     }
 }

@@ -1,0 +1,79 @@
+# Multi-arch capable build for Next.js web app
+# syntax=docker/dockerfile:1.7-labs
+ARG NODE_VERSION=22.5.1
+ARG NEXT_PUBLIC_SOCKET_SERVER_URL=http://socket
+ARG NEXT_PUBLIC_SOCKET_SERVER_PORT=8880
+ARG NEXT_PUBLIC_APP_PORT=3000
+ARG NEXT_PUBLIC_SHOW_PORT_IN_SERVER_IP=true
+FROM --platform=$BUILDPLATFORM node:${NODE_VERSION}-slim AS base
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+RUN corepack enable
+WORKDIR /app
+
+# Dependencies for building (may need build tools for optional deps)
+RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ ca-certificates && rm -rf /var/lib/apt/lists/*
+
+# Copy manifests for better caching
+COPY package.json turbo.json .npmrc* .yarnrc* package-lock.json* pnpm-lock.yaml* ./
+COPY packages/typescript-config/package.json packages/typescript-config/
+COPY packages/eslint-config/package.json packages/eslint-config/
+COPY packages/database/package.json packages/database/
+COPY apps/web/package.json apps/web/
+COPY apps/socket/package.json apps/socket/
+
+RUN npm install --include=dev
+
+# Copy source
+COPY . .
+
+# Build database (for types) then web (standalone output)
+ENV NEXT_PUBLIC_SOCKET_SERVER_URL=${NEXT_PUBLIC_SOCKET_SERVER_URL} \
+	NEXT_PUBLIC_SOCKET_SERVER_PORT=${NEXT_PUBLIC_SOCKET_SERVER_PORT} \
+	NEXT_PUBLIC_APP_PORT=${NEXT_PUBLIC_APP_PORT} \
+	NEXT_PUBLIC_SHOW_PORT_IN_SERVER_IP=${NEXT_PUBLIC_SHOW_PORT_IN_SERVER_IP}
+# Generate migrations for database BEFORE building (uses TS source models)
+RUN npm run migrate --workspace @protoshock/database || echo "[warn] migration generation failed (maybe none needed)" \
+ && npm run build --workspace @protoshock/database --if-present \
+ && npm run build --workspace @protoshock/web \
+ && npm prune --omit=dev
+
+FROM node:${NODE_VERSION}-slim AS runtime
+ENV NODE_ENV=production
+WORKDIR /app
+# Copy standalone server (contains minimal node_modules)
+COPY --from=base /app/apps/web/.next/standalone ./
+COPY --from=base /app/apps/web/.next/static ./apps/web/.next/static
+COPY --from=base /app/apps/web/public ./apps/web/public
+COPY --from=base /app/packages/database/dist ./packages/database/dist
+# Copy generated migrations from database package
+# Copy generated migrations (drizzle places them under /app/shared/drizzle)
+COPY --from=base /app/shared/drizzle /app/shared-drizzle-src
+# Copy needed node_modules for database runtime (drizzle-orm, better-sqlite3, etc.)
+COPY --from=base /app/node_modules ./node_modules
+RUN mkdir -p /app/shared
+ENV DATABASE_PATH=/app/shared/magic.db
+EXPOSE 3000
+COPY <<'EOF' /app/entrypoint.sh
+#!/usr/bin/env bash
+set -euo pipefail
+echo "[entrypoint] Starting standalone Next.js server: $(hostname)"
+if [ -d /app/shared-drizzle-src ] && [ ! -d /app/shared/drizzle ]; then
+	echo "[entrypoint] Seeding migrations to shared volume";
+	cp -r /app/shared-drizzle-src /app/shared/drizzle;
+fi
+if [ ! -f "${DATABASE_PATH}" ]; then
+	echo "[entrypoint] Database file not found. Initializing..."
+	node -e "import('./packages/database/dist/index.js').then(async m=>{const db=new m.ProtoDBClass();await db.init();}).catch(e=>{console.error(e);process.exit(1);})"
+else
+	echo "[entrypoint] Database file exists. Verifying schema..."
+	if ! node --enable-source-maps packages/database/dist/utils/verifySchema.js; then
+		echo "[entrypoint] Schema verification failed. Re-initializing database.";
+		rm -f "${DATABASE_PATH}";
+		node -e "import('./packages/database/dist/index.js').then(async m=>{const db=new m.ProtoDBClass();await db.init();}).catch(e=>{console.error(e);process.exit(1);})"
+	fi
+fi
+exec node apps/web/server.js -p 3000
+EOF
+RUN chmod +x /app/entrypoint.sh
+ENTRYPOINT ["/app/entrypoint.sh"]

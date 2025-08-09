@@ -1,12 +1,54 @@
+version: "3.9"
 services:
-  protoshock_server:
+  socket:
     build:
       context: .
-      args:
-        SOCKET_ENV_FILE_CONTENT: ${SOCKET_ENV_FILE_CONTENT}
-        WEB_ENV_FILE_CONTENT: ${WEB_ENV_FILE_CONTENT}
-        DATABASE_ENV_FILE_CONTENT: ${DATABASE_ENV_FILE_CONTENT}
-    restart: no
-    container_name: protoshock_server
+      dockerfile: Dockerfile.socket
+      x-bake:
+        platforms:
+          - linux/amd64
+          - linux/arm64
+    image: protoshock-socket:latest
+    environment:
+      NODE_ENV: production
+      PORT: 8880
+      DATABASE_PATH: /app/shared/magic.db
+      # Example additional envs; user can extend
+      SERVER_NAME: ProtoShock Docker Socket
+    volumes:
+      - shared-data:/app/shared
     ports:
       - "8880:8880"
+    depends_on: []
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      x-bake:
+        platforms:
+          - linux/amd64
+          - linux/arm64
+    image: protoshock-web:latest
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOST: 0.0.0.0
+      SOCKET_SERVER_URL: http://socket:8880
+      SOCKET_SERVER_INTERNAL_URL: http://socket:8880
+      NEXT_PUBLIC_SOCKET_SERVER_URL: http://socket
+      NEXT_PUBLIC_SOCKET_SERVER_PORT: 8880
+      NEXT_PUBLIC_APP_PORT: 3000
+      DATABASE_PATH: /app/shared/magic.db
+    volumes:
+      - shared-data:/app/shared
+    ports:
+      - "3000:3000"
+    depends_on:
+      - socket
+    restart: unless-stopped
+
+volumes:
+  shared-data:
+    driver: local

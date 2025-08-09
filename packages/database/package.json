@@ -6,7 +6,8 @@
         "build": "NODE_ENV=production tsc --build && tsc-alias",
         "lint": "eslint . --ext .ts,.tsx --max-warnings 12",
         "check-types": "tsc --noEmit",
-        "migrate": "drizzle-kit generate --config drizzle.config.ts"
+        "migrate": "drizzle-kit generate --config drizzle.config.ts",
+        "verify:db": "node --loader ts-node/esm ./src/utils/verifySchema.ts"
     },
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -20,11 +21,13 @@
         "eslint": "^9.31.0",
         "tsc-alias": "^1.8.16",
         "tsx": "^4.20.3",
-        "typescript": "5.8.2"
+        "typescript": "5.8.2",
+        "ts-node": "^10.9.2"
     },
     "dependencies": {
         "better-sqlite3": "^12.2.0",
         "dotenv": "^17.2.1",
-        "drizzle-orm": "^0.44.3"
+        "drizzle-orm": "^0.44.3",
+        "drizzle-kit": "^0.31.4"
     }
 }

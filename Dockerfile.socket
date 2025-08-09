@@ -1,0 +1,78 @@
+# Multi-arch capable build for socket server
+# syntax=docker/dockerfile:1.7-labs
+
+ARG NODE_VERSION=22.5.1
+FROM --platform=$BUILDPLATFORM node:${NODE_VERSION}-slim AS base
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+RUN corepack enable
+WORKDIR /app
+
+# Install build deps for better-sqlite3 & sharp
+RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ ca-certificates && rm -rf /var/lib/apt/lists/*
+
+# Only copy root manifest workspace info first for faster caching
+COPY package.json turbo.json .npmrc* .yarnrc* package-lock.json* pnpm-lock.yaml* ./
+COPY packages/typescript-config/package.json packages/typescript-config/
+COPY packages/eslint-config/package.json packages/eslint-config/
+COPY packages/database/package.json packages/database/
+COPY apps/socket/package.json apps/socket/
+COPY apps/web/package.json apps/web/
+
+# Install dependencies (npm)
+RUN npm install --include=dev
+
+# Copy sources
+COPY . .
+
+# Build only the database (needed for runtime types) and socket app
+# Generate migrations (drizzle) BEFORE building TS so models are available
+RUN npm run migrate --workspace @protoshock/database || echo "[warn] migration generation failed (possibly already up-to-date)"
+# Build database & socket, then prune dev deps
+RUN npm run build --workspace @protoshock/database --workspace @protoshock/socket \
+ && npm prune --omit=dev
+
+FROM node:${NODE_VERSION}-slim AS runtime
+WORKDIR /app
+ENV NODE_ENV=production
+# Copy only needed built artifacts and node_modules
+COPY --from=base /app/node_modules ./node_modules
+COPY --from=base /app/apps/socket/dist ./apps/socket/dist
+COPY --from=base /app/apps/socket/serverIcon.png ./apps/socket/serverIcon.png
+COPY --from=base /app/packages/database/dist ./packages/database/dist
+# Copy repository shared migrations (present in repo root at shared/drizzle)
+# Copy generated migrations from database package
+# Copy generated migrations (drizzle places them under /app/shared/drizzle)
+COPY --from=base /app/shared/drizzle /app/shared-drizzle-src
+# Copy package manifests to preserve ESM boundaries
+COPY --from=base /app/apps/socket/package.json ./apps/socket/package.json
+COPY --from=base /app/packages/database/package.json ./packages/database/package.json
+# Shared dir for sqlite will be mounted at /app/shared (volume).
+RUN mkdir -p /app/shared
+# Lightweight entrypoint to copy migrations into volume if missing
+COPY <<'EOF' /app/entrypoint.sh
+#!/usr/bin/env bash
+set -euo pipefail
+echo "[entrypoint] Starting container: $(hostname)"
+if [ -d /app/shared-drizzle-src ] && [ ! -d /app/shared/drizzle ]; then
+	echo "[entrypoint] Seeding migrations to shared volume";
+	cp -r /app/shared-drizzle-src /app/shared/drizzle;
+fi
+if [ ! -f "${DATABASE_PATH}" ]; then
+	echo "[entrypoint] Database file not found. Initializing..."
+	node -e "import('./packages/database/dist/index.js').then(async m=>{const db=new m.ProtoDBClass();await db.init();}).catch(e=>{console.error(e);process.exit(1);})"
+else
+	echo "[entrypoint] Database file exists. Verifying schema..."
+	if ! node --enable-source-maps packages/database/dist/utils/verifySchema.js; then
+		echo "[entrypoint] Schema verification failed. Re-initializing database.";
+		rm -f "${DATABASE_PATH}";
+		node -e "import('./packages/database/dist/index.js').then(async m=>{const db=new m.ProtoDBClass();await db.init();}).catch(e=>{console.error(e);process.exit(1);})"
+	fi
+fi
+exec "$@"
+EOF
+RUN chmod +x /app/entrypoint.sh
+ENV DATABASE_PATH=/app/shared/magic.db
+EXPOSE 8880
+ENTRYPOINT ["/app/entrypoint.sh"]
+CMD ["node","apps/socket/dist/index.js"]
