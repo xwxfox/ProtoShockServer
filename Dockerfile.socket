@@ -8,6 +8,9 @@ ENV PATH=$PNPM_HOME:$PATH
 RUN corepack enable
 WORKDIR /app
 
+# Ensure DATABASE_PATH is set during build so drizzle outputs migrations to /app/shared/drizzle
+ENV DATABASE_PATH=/app/shared/magic.db
+
 # Install build deps for better-sqlite3 & sharp
 RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ ca-certificates && rm -rf /var/lib/apt/lists/*
 
@@ -27,7 +30,10 @@ COPY . .
 
 # Build only the database (needed for runtime types) and socket app
 # Generate migrations (drizzle) BEFORE building TS so models are available
+# Generate migrations. Because DATABASE_PATH is set above, drizzle will place them under /app/shared/drizzle
 RUN npm run migrate --workspace @protoshock/database || echo "[warn] migration generation failed (possibly already up-to-date)"
+RUN mkdir -p /app/shared/drizzle \
+ && echo "[build] Ensured /app/shared/drizzle exists"
 # Build database & socket, then prune dev deps
 RUN npm run build --workspace @protoshock/database --workspace @protoshock/socket \
  && npm prune --omit=dev

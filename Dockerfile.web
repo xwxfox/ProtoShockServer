@@ -11,6 +11,9 @@ ENV PATH=$PNPM_HOME:$PATH
 RUN corepack enable
 WORKDIR /app
 
+# Ensure DATABASE_PATH is set during build so drizzle outputs migrations to /app/shared/drizzle
+ENV DATABASE_PATH=/app/shared/magic.db
+
 # Dependencies for building (may need build tools for optional deps)
 RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ ca-certificates && rm -rf /var/lib/apt/lists/*
 
@@ -34,6 +37,8 @@ ENV NEXT_PUBLIC_SOCKET_SERVER_URL=${NEXT_PUBLIC_SOCKET_SERVER_URL} \
 	NEXT_PUBLIC_SHOW_PORT_IN_SERVER_IP=${NEXT_PUBLIC_SHOW_PORT_IN_SERVER_IP}
 # Generate migrations for database BEFORE building (uses TS source models)
 RUN npm run migrate --workspace @protoshock/database || echo "[warn] migration generation failed (maybe none needed)" \
+ && mkdir -p /app/shared/drizzle \
+ && echo "[build] Ensured /app/shared/drizzle exists" \
  && npm run build --workspace @protoshock/database --if-present \
  && npm run build --workspace @protoshock/web \
  && npm prune --omit=dev

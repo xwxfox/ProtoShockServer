@@ -13,7 +13,6 @@ config({
 
 export const serverOptions = {
     name: process.env.SERVER_NAME || "Protoshock Server",
-    version: process.env.SERVER_VERSION || "1.0.0",
     description: process.env.SERVER_DESCRIPTION || "A Protoshock server.",
     host: process.env.SERVER_HOST || "localhost",
     port: parseInt(process.env.PORT || "8880", 10),
