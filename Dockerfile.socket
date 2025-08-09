@@ -30,7 +30,8 @@ COPY . .
 
 # Build only the database (needed for runtime types) and socket app
 # Generate migrations (drizzle) BEFORE building TS so models are available
-# Generate migrations. Because DATABASE_PATH is set above, drizzle will place them under /app/shared/drizzle
+# Generate migrations. Use explicit DRIZZLE_OUT for deterministic path regardless of DATABASE_PATH availability.
+ENV DRIZZLE_OUT=shared/drizzle
 RUN npm run migrate --workspace @protoshock/database || echo "[warn] migration generation failed (possibly already up-to-date)"
 RUN mkdir -p /app/shared/drizzle \
  && echo "[build] Ensured /app/shared/drizzle exists"
