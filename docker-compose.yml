@@ -1,5 +1,4 @@
 version: "3.9"
-name: ProtoshockServer
 services:
   socket:
     container_name: protoshock-socket
