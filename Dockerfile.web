@@ -46,11 +46,6 @@ COPY --from=base /app/apps/web/.next/standalone ./
 COPY --from=base /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=base /app/apps/web/public ./apps/web/public
 COPY --from=base /app/packages/database/dist ./packages/database/dist
-# Copy generated migrations from database package
-# Copy generated migrations (drizzle places them under /app/shared/drizzle)
-COPY --from=base /app/shared/drizzle/pg /app/shared/drizzle/pg
-# Also keep a seed copy outside the shared volume mount so we can repopulate the first time the named volume is empty
-COPY --from=base /app/shared/drizzle/pg /app/drizzle-seed/pg
 # Copy needed node_modules for database runtime (drizzle-orm, etc.)
 COPY --from=base /app/node_modules ./node_modules
 EXPOSE 3000
@@ -59,12 +54,7 @@ COPY <<'EOF' /app/entrypoint.sh
 set -euo pipefail
 echo "[entrypoint] Starting web app (Postgres)"
 
-# If shared volume is empty (first run) seed migrations from baked image copy
-if [ ! -d /app/shared/drizzle/pg ] && [ -d /app/drizzle-seed/pg ]; then
-	echo "[entrypoint] Seeding migrations into shared volume..."
-	mkdir -p /app/shared/drizzle
-	cp -r /app/drizzle-seed/pg /app/shared/drizzle/
-fi
+## (web) No migration seeding here; socket owns migrations
 
 until node -e "import('pg').then(async m=>{const c=new m.Client({connectionString: process.env.DATABASE_URL||'postgres://postgres:postgres@db:5432/protoshock'});await c.connect();await c.end();}).catch(e=>{process.exit(1);})"; do
 	echo "[entrypoint] Waiting for database..."; sleep 2;

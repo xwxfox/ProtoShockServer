@@ -42,7 +42,7 @@ export class DatabaseHandler {
 
     async logPlayerLeave(player: Player) {
         try {
-        const nowSec = Math.floor(Date.now() / 1000);
+            const nowSec = Math.floor(Date.now() / 1000);
 
             // Update player stats with leave time
             const playerStatsRecord = await this.db.database
@@ -54,16 +54,16 @@ export class DatabaseHandler {
 
             if (playerStatsRecord.length > 0) {
                 const session = playerStatsRecord[0];
-        // Support legacy ms-based rows: if joinTime looks like ms, convert on the fly
-        const joinTimeSec = session.joinTime > 2000000000 ? Math.floor(session.joinTime / 1000) : session.joinTime;
-        const sessionDuration = nowSec - joinTimeSec;
+                // Support legacy ms-based rows: if joinTime looks like ms, convert on the fly
+                const joinTimeSec = session.joinTime > 2000000000 ? Math.floor(session.joinTime / 1000) : session.joinTime;
+                const sessionDuration = nowSec - joinTimeSec;
 
                 await this.db.database
                     .update(playerStats)
                     .set({
-            leaveTime: nowSec,
+                        leaveTime: nowSec,
                         sessionDuration,
-            lastUpdated: nowSec,
+                        lastUpdated: nowSec,
                     })
                     .where(eq(playerStats.id, session.id));
             }
@@ -72,7 +72,7 @@ export class DatabaseHandler {
                 eventType: 'player_leave',
                 playerId: player.id,
                 roomId: player.roomId,
-        timestamp: nowSec,
+                timestamp: nowSec,
             });
         } catch (error) {
             console.error('[Database] Error logging player leave:', error);
