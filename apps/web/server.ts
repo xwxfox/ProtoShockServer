@@ -8,7 +8,7 @@ import { Socket } from 'node:net';
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = process.env.HOST || 'localhost';
 const port = parseInt(process.env.PORT || '3000', 10);
-const socketServerUrl = process.env.SOCKET_SERVER_URL || 'http://localhost:8880';
+const socketServerUrl = process.env.SOCKET_SERVER_URL || process.env.NEXT_PUBLIC_SOCKET_SERVER_URL || 'http://socket:8880';
 
 // Initialize Next.js app
 const app = next({ dev, hostname, port });

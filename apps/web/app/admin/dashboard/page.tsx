@@ -54,9 +54,15 @@ const AdminDashboard = () => { // Encapsulate the component logic in a function
     }, [router]);
 
     useEffect(() => {
-        // Connect to socket server
-        const newSocket = io('http://localhost:8880', {
-            transports: ['websocket', 'polling']
+        // Prefer environment-provided server URL, else hostname, else relative (proxied) path
+        const envUrl = process.env.NEXT_PUBLIC_SOCKET_SERVER_URL || process.env.SOCKET_SERVER_URL;
+        // If running behind same host with proxy, using window.location.origin may work client-side; fallback to relative
+        const target = envUrl || (typeof window !== 'undefined' ? window.location.origin : '') || '';
+        // If we have no protocol in target (empty string), using relative path ensures proxy via Next.js server
+        const socketUrl = target ? target : '';
+        const newSocket = io(socketUrl, {
+            transports: ['websocket', 'polling'],
+            path: '/socket.io'
         });
 
         newSocket.on('connect', () => {
